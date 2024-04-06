@@ -16,6 +16,7 @@ boxId = p.loadURDF("r2d2.urdf",startPos, startOrientation)
 for i in range (10000):
     p.stepSimulation()
     time.sleep(1./240.)
+    save_image(p, i)
     
 cubePos, cubeOrn = p.getBasePositionAndOrientation(boxId)
 print(cubePos,cubeOrn)

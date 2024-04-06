@@ -5,6 +5,6 @@ def save_image(pb: p, index: int) -> None:
     img = pb.getCameraImage(224, 224, renderer=pb.ER_BULLET_HARDWARE_OPENGL)
     rgbBuffer = img[2]
     rgbim = Image.fromarray(rgbBuffer)
-    rgbim.save(f"rgbimage_{index}.png")
+    rgbim.save(f"./img/rgbimage_{index}.png")
 
 

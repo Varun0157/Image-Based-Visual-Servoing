@@ -1,3 +1,5 @@
-__pycache__/
-miniconda3/
+miniconda3
+__pycache__
+img/
+__tmp/
 
