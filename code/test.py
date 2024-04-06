@@ -21,6 +21,4 @@ for i in range (500):
 cubePos, cubeOrn = p.getBasePositionAndOrientation(boxId)
 print(cubePos,cubeOrn)
 
-save_image(p, 1)
-
 p.disconnect()
