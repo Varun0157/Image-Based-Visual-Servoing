@@ -13,7 +13,7 @@ startPos = [0,0,1]
 startOrientation = p.getQuaternionFromEuler([0,0,0])
 boxId = p.loadURDF("r2d2.urdf",startPos, startOrientation)
 #set the center of mass frame (loadURDF sets base link frame) startPos/Ornp.resetBasePositionAndOrientation(boxId, startPos, startOrientation)
-for i in range (10000):
+for i in range (500):
     p.stepSimulation()
     time.sleep(1./240.)
     save_image(p, i)
