@@ -113,12 +113,10 @@ def main() -> None:
         )
 
         img_arr = convertRobotImageToArr(
-            img_details, int(image_conf["height"]), int(image_conf["width"])
+            img_details[2], int(image_conf["height"]), int(image_conf["width"])
         )
 
         # servo_points = servoing(arr)
-        
-
 
         pass
 
