@@ -1,29 +1,24 @@
 import pybullet as p
 import pybullet_data
 
-import time 
+from time import sleep 
 
-from save_image import save_image
+import numpy as np 
 
-def main() -> None:
-    physicsClient = p.connect(p.DIRECT)#or p.DIRECT for non-graphical version
-    # NOTE: this sim code is completely as in the pybullet docs. 
-    p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
-    p.setGravity(0,0,-10)
-    planeId = p.loadURDF("plane.urdf")
-    startPos = [0,0,1]
-    startOrientation = p.getQuaternionFromEuler([0,0,0])
-    boxId = p.loadURDF("r2d2.urdf",startPos, startOrientation)
-    #set the center of mass frame (loadURDF sets base link frame) startPos/Ornp.resetBasePositionAndOrientation(boxId, startPos, startOrientation)
-    for i in range (250):
-        p.stepSimulation()
-        time.sleep(1./240.)
-        save_image(p, i)
+from PIL import Image 
+
+def convertRobotImageToArr(arr: list[list[list[int]]], h: int, w: int) -> np.ndarray[np.Any, np.dtype[np.Any]]:
+    pixels = []
+    for x in range(h):
+        for y in range(w):
+            r, g, b, a = arr[x][y]
+            pixels.append((r, g, b, a))
     
-    cubePos, cubeOrn = p.getBasePositionAndOrientation(boxId)
-    print(cubePos,cubeOrn)
+    img = Image.new('RGBA', (w, h))
+    img.putdata(pixels)
 
-    p.disconnect()
+    return np.array(img)
+
 
 if __name__ == "__main__":
     main()
