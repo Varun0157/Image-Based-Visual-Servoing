@@ -2,23 +2,27 @@ import pybullet as p
 import pybullet_data
 
 from time import sleep
+from typing import Union, Dict
 
 import numpy as np
 
 from robot_image import convertRobotImageToArr
+from servo import servo
+from robot_motion import get_velocity
+
+MAX_ITERATIONS = int(1e3)
 
 
-def initPyBullet() -> tuple[int, float]:
+def initPyBullet() -> int:
     pClient = p.connect(p.GUI)
-    dt: float = 3 * 1e-4
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
     p.setGravity(0, 0, -10)
-    p.setRealTimeSimulation(True)
+    p.setRealTimeSimulation(1)
 
-    return pClient, dt
+    return pClient
 
 
-def get_image_config() -> dict[str, int | float]:
+def get_image_config() -> Dict[str, Union[int, float]]:
     WIDTH = 800
     HEIGHT = 600
     FOV = 90
@@ -36,20 +40,20 @@ def get_image_config() -> dict[str, int | float]:
 
 
 def main() -> None:
-    physicsClient, dt = initPyBullet()
+    _ = initPyBullet()
+    dt: float = 0.0003
 
     # initialise the plane
     plane_id = p.loadURDF("plane.urdf")
 
     # initialise the robot
     robot_start_pos = [0, 0, 1]
-    robot_start_orientation = p.getQuaternionFromEuler(
-        [0, 0, 0]
-    )  # NOTE: in the example it is different
-    robot_id = p.loadURDF("robot.urdf", robot_start_pos, robot_start_orientation)
+    robot_start_orientation = p.getQuaternionFromEuler([0, 0, 0 - (np.pi / 4)])
+    robot_id = p.loadURDF("r2d2.urdf", robot_start_pos, robot_start_orientation)
 
     # loading obstacles, with the main cube at the first index
     base = robot_start_pos  # for now
+    base_orn = p.getQuaternionFromEuler([0, 0, 0])
     obstacles = []
     for x_offset in [0, -1, 1]:
         for y_offset in [5]:
@@ -62,17 +66,19 @@ def main() -> None:
                             base[1] + y_offset,
                             base[2] + z_offset,
                         ],
+                        base_orn,
+                        globalScaling=20,
                     )
                 )
 
     # taking [0, 5, 0] as the obstacle with the qrcode
     goal_obs_id = obstacles[0]
-    texture_id = p.loadTexture("qrcode.png")
+    texture_id = p.loadTexture("aruco_marker.png")
     p.changeVisualShape(goal_obs_id, -1, textureUniqueId=texture_id)
 
     sleep(1)
 
-    while True:
+    for _ in range(MAX_ITERATIONS):
         # getting the robot and the obstacle with the qrcode
         robot_pos, robot_orientation = p.getBasePositionAndOrientation(robot_id)
         goal_pos, goal_orientation = p.getBasePositionAndOrientation(goal_obs_id)
@@ -81,12 +87,14 @@ def main() -> None:
         robot_rotation_matrix = p.getMatrixFromQuaternion(robot_orientation)
         robot_rotation_matrix = np.array(object=robot_rotation_matrix).reshape(3, 3)
 
+        print(robot_pos)
+
         # initial camera vectors
-        init_camera_vector = [0, 1, 0]  # y axis
-        init_up_vector = [0, 0, 1]  # z axis
+        init_camera_vector = (0, 1, 0)  # y axis
+        init_up_vector = (0, 0, 1)  # z axis
 
         # rotated vectors
-        approx_view_z_offset = 0.6
+        approx_view_z_offset = 0.7
         robot_view_point = [
             robot_pos[0],
             robot_pos[1],
@@ -95,8 +103,10 @@ def main() -> None:
         camera_vector = robot_rotation_matrix.dot(init_camera_vector)
         up_vector = robot_rotation_matrix.dot(init_up_vector)
         view_matrix = p.computeViewMatrix(
-            robot_view_point, robot_pos + camera_vector, up_vector
+            robot_view_point, robot_pos + 2 * camera_vector, up_vector
         )
+
+        p.stepSimulation()
 
         image_conf = get_image_config()
         projection_matrix = p.computeProjectionMatrixFOV(
@@ -112,13 +122,60 @@ def main() -> None:
             projection_matrix,
         )
 
+        rgb_img = np.array(img_details[2])
         img_arr = convertRobotImageToArr(
-            img_details[2], int(image_conf["height"]), int(image_conf["width"])
+            rgb_img, int(image_conf["height"]), int(image_conf["width"])
         )
+        # print(img_arr)
 
-        # servo_points = servoing(arr)
+        servo_points = servo(img_arr)
+        if not servo_points:
+            print("no aruco marker detected, resetting with slight adjustment")
+            _, orientation = p.getBasePositionAndOrientation(robot_id)
+            euler_orientation = p.getEulerFromQuaternion(orientation)
+            p.resetBasePositionAndOrientation(
+                robot_id,
+                robot_pos,
+                p.getQuaternionFromEuler(
+                    [
+                        euler_orientation[0],
+                        euler_orientation[1],
+                        euler_orientation[2] + np.pi / 18,
+                    ]
+                ),
+            )
+            continue
 
-        pass
+        # an aruco marker was detected
+        velocity = get_velocity(servo_points)
+
+        robot_pos = list(robot_pos)
+        robot_orientation = list(p.getEulerFromQuaternion(robot_orientation))
+
+        # creating the transformation matrix
+        #       [R R R -Tx]
+        #       [R R R -Ty]
+        #       [R R R -Tz]
+        #       [0 0 0  1 ]
+        transform = np.zeros((4, 4))
+        for i in range(3):
+            for j in range(3):
+                transform[i][j] = robot_rotation_matrix[i][j]
+        for i, val in enumerate([-robot_pos[0], -robot_pos[1], -robot_pos[2], 1]):
+            transform[i][3] = val
+        print(transform)
+        velocity[3] = 1
+
+        # NOTE: implementation says velocity[3] = 1 here, but I don't see why, so not adding it
+        del_pos = np.matmul(transform, velocity[:4])
+        # print(f"velocity: {velocity}, delpos:{del_pos}", sep="\n")
+        for i in range(3):
+            robot_pos[i] += del_pos[i] * dt
+
+        robot_orientation[2] += velocity[5] * dt * 75
+        robot_orientation = p.getQuaternionFromEuler(robot_orientation)
+        p.resetBasePositionAndOrientation(robot_id, robot_pos, robot_orientation)
+        sleep(0.01)
 
 
 if __name__ == "__main__":
