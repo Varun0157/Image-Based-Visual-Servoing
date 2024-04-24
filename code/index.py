@@ -126,7 +126,6 @@ def main() -> None:
         )
 
         save_rgb_image(img_details, i)
-        # print(img_arr)
 
         servo_points = servo(img_arr)
         if not servo_points:
@@ -164,15 +163,16 @@ def main() -> None:
         for i, val in enumerate([-robot_pos[0], -robot_pos[1], -robot_pos[2], 1]):
             transform[i][3] = val
         # print(transform)
-        velocity[3] = 1
 
         # NOTE: implementation says velocity[3] = 1 here, but I don't see why, so not adding it
-        del_pos = np.matmul(transform, velocity[:4])
+        del_pos = np.matmul(transform, [*velocity[:3], 1])
         # print(f"velocity: {velocity}, delpos:{del_pos}", sep="\n")
         for i in range(3):
             robot_pos[i] += del_pos[i] * dt
 
-        robot_orientation[2] += velocity[5] * dt * 75
+        robot_orientation[0] += velocity[3] * dt
+        robot_orientation[1] += velocity[4] * dt
+        robot_orientation[2] += velocity[5] * dt
         robot_orientation = p.getQuaternionFromEuler(robot_orientation)
         p.resetBasePositionAndOrientation(robot_id, robot_pos, robot_orientation)
         sleep(0.01)
