@@ -4,7 +4,6 @@ from typing import List, Union
 
 # NOTE: this implementation of visual servoing uses Aruco markers, which is why we can simply use detectMarkers of the cv.aruco module
 
-
 def servo(img_arr: np.ndarray) -> Union[List[List[int]], None]:
     # detect the aruco marker in the image
     marker_dict = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_4X4_1000)
@@ -24,8 +23,8 @@ def servo(img_arr: np.ndarray) -> Union[List[List[int]], None]:
     corners = corners.reshape(4, 2)
     corners = corners.astype(int)
 
-    top_right = list(corners[0].ravel())
-    top_left = list(corners[1].ravel())
+    top_left = list(corners[0].ravel())
+    top_right = list(corners[1].ravel())
     bottom_right = list(corners[2].ravel())
     bottom_left = list(corners[3].ravel())
 

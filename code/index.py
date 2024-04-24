@@ -8,7 +8,7 @@ import numpy as np
 
 from robot_image import convertRobotImageToArr, save_rgb_image
 from servo import servo
-from robot_motion import get_velocity
+from robot_motion import get_error, get_velocity
 
 MAX_ITERATIONS = int(1e4)
 
@@ -41,7 +41,7 @@ def get_image_config() -> Dict[str, Union[int, float]]:
 
 def main() -> None:
     _ = initPyBullet()
-    dt: float = 0.0003
+    dt: float = 0.0001
 
     # initialise the plane
     plane_id = p.loadURDF("plane.urdf")
@@ -78,6 +78,7 @@ def main() -> None:
 
     sleep(1)
 
+    MAX_ERROR = 1
     for i in range(MAX_ITERATIONS):
         # getting the robot and the obstacle with the qrcode
         robot_pos, robot_orientation = p.getBasePositionAndOrientation(robot_id)
@@ -125,9 +126,10 @@ def main() -> None:
             rgb_img, int(image_conf["height"]), int(image_conf["width"])
         )
 
-        save_rgb_image(img_details, i)
+        save_rgb_image(img_arr, i)
 
         servo_points = servo(img_arr)
+
         if not servo_points:
             print("no aruco marker detected, rotating")
             _, orientation = p.getBasePositionAndOrientation(robot_id)
@@ -146,6 +148,16 @@ def main() -> None:
             continue
 
         # an aruco marker was detected
+        error = get_error(servo_points)
+        MSE = np.mean(error**2)
+        print(f"error: {error}, mse = {MSE}")
+        if MSE < 500:
+            print("DONE")
+            p.disconnect()
+            break
+        elif MSE > MAX_ERROR:
+            MAX_ERROR = MSE
+
         velocity = get_velocity(servo_points)
 
         robot_pos = list(robot_pos)
@@ -170,9 +182,10 @@ def main() -> None:
         for i in range(3):
             robot_pos[i] += del_pos[i] * dt
 
-        robot_orientation[0] += velocity[3] * dt
-        robot_orientation[1] += velocity[4] * dt
-        robot_orientation[2] += velocity[5] * dt
+        # del_orn = np.matmul(transform, [*velocity[3:], 1])
+        # robot_orientation[0] += del_orn[0] * dt * 75
+        # robot_orientation[1] += del_orn[1] * dt * 75
+        robot_orientation[2] += velocity[5] * dt * 75
         robot_orientation = p.getQuaternionFromEuler(robot_orientation)
         p.resetBasePositionAndOrientation(robot_id, robot_pos, robot_orientation)
         sleep(0.01)

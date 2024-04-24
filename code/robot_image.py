@@ -15,7 +15,6 @@ def convertRobotImageToArr(arr: List, h: int, w: int) -> np.ndarray:
     return np.array(img)
 
 
-def save_rgb_image(img: List, index: int) -> None:
-    rgbBuffer = img[2]
-    rgbim = Image.fromarray(rgbBuffer)
+def save_rgb_image(img: np.ndarray, index: int) -> None:
+    rgbim = Image.fromarray(img)
     rgbim.save(f"./img/rgbimage_{index}.png")
