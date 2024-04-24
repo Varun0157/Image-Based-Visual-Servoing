@@ -41,7 +41,7 @@ def get_image_config() -> Dict[str, Union[int, float]]:
 
 def main() -> None:
     _ = initPyBullet()
-    dt: float = 0.0001
+    dt: float = 0.00015
 
     # initialise the plane
     plane_id = p.loadURDF("plane.urdf")
@@ -183,9 +183,9 @@ def main() -> None:
             robot_pos[i] += del_pos[i] * dt
 
         del_orn = np.matmul(transform, [*velocity[3:], 1])
-        robot_orientation[0] += del_orn[0] * dt
-        robot_orientation[1] += del_orn[1] * dt
-        robot_orientation[2] += del_orn[2] * dt
+        # robot_orientation[0] += del_orn[0] * dt
+        # robot_orientation[1] += del_orn[1] * dt
+        robot_orientation[2] += velocity[5] * dt * 75
         robot_orientation = p.getQuaternionFromEuler(robot_orientation)
         p.resetBasePositionAndOrientation(robot_id, robot_pos, robot_orientation)
         sleep(0.01)

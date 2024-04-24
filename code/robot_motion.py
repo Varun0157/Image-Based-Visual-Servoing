@@ -5,7 +5,6 @@ from typing import List
 
 requiredPos = None
 
-
 def getRequiredPos() -> List[List[int]]:
     global requiredPos
     if requiredPos is None:
@@ -26,8 +25,10 @@ def jacobian(u: float, v: float, f=1, z=1) -> List[List[float]]:
 
 
 def get_error(points: List[List[int]]):
+    # randomly acquire a length 3 list of indexes in range(4)
+    indices = [0, 1, 2] # consider randomising later
     reqPos = getRequiredPos()
-    error = np.array([reqPos[i][j] - points[i][j] for i in range(3) for j in range(2)])
+    error = np.array([reqPos[i][j] - points[i][j] for i in indices for j in range(2)])
     return error
 
 
