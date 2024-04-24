@@ -6,8 +6,7 @@ from typing import Union, Dict
 
 import numpy as np
 
-from save_image import save_rgb_image
-from robot_image import convertRobotImageToArr
+from robot_image import convertRobotImageToArr, save_rgb_image
 from servo import servo
 from robot_motion import get_velocity
 
@@ -121,7 +120,7 @@ def main() -> None:
             projection_matrix,
         )
 
-        rgb_img = np.array(img_details[2])
+        rgb_img = img_details[2]
         img_arr = convertRobotImageToArr(
             rgb_img, int(image_conf["height"]), int(image_conf["width"])
         )
@@ -131,7 +130,7 @@ def main() -> None:
 
         servo_points = servo(img_arr)
         if not servo_points:
-            print("no aruco marker detected, resetting with slight adjustment")
+            print("no aruco marker detected, rotating")
             _, orientation = p.getBasePositionAndOrientation(robot_id)
             euler_orientation = p.getEulerFromQuaternion(orientation)
             p.resetBasePositionAndOrientation(
