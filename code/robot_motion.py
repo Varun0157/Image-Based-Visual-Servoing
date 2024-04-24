@@ -28,18 +28,13 @@ def jacobian(u: float, v: float, f=1, z=1) -> List[List[float]]:
 def get_velocity(points: List[List[int]]):
     # NOTE: in implementation, they say in range(3) twice. I think that's wrong and I'm using in range(4)
     reqPos = getRequiredPos()
-    error = []
-    for i in range(3):
-        for j in range(2):
-            error.append(reqPos[i][j] - points[i][j])
-    error = np.array(error)
+    error = np.array([reqPos[i][j] - points[i][j] for i in range(4) for j in range(2)])
+    print(f"error: {error}")
 
     J = []
-    z = [1, 1, 1]
-    J += jacobian(*points[0], z[0])
-    J += jacobian(*points[1], z[1])
-    J += jacobian(*points[2], z[2])
-    J_inv = np.linalg.inv(J)  # NOTE: implementation takes inv
+    for i in range(4):
+        J += jacobian(u=points[i][0], v=points[i][1], z=1)
+    J_inv = np.linalg.pinv(J)  # NOTE: implementation takes inv
 
     velocity = np.matmul(J_inv, error)
     return velocity
