@@ -76,7 +76,7 @@ def main() -> None:
     texture_id = p.loadTexture("aruco_marker.png")
     p.changeVisualShape(goal_obs_id, -1, textureUniqueId=texture_id)
 
-    sleep(1)
+    sleep(10)
 
     MIN_ERROR = 1e6
     for i in range(MAX_ITERATIONS):
@@ -151,7 +151,7 @@ def main() -> None:
         error = get_error(servo_points)
         MSE = np.mean(error**2)
         # print(f"error: {error}, mse = {MSE}")
-        if MSE < 500:
+        if MSE < 410:
             print("DONE")
             p.disconnect()
             break
