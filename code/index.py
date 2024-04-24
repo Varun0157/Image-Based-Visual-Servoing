@@ -41,7 +41,7 @@ def get_image_config() -> Dict[str, Union[int, float]]:
 
 def main() -> None:
     _ = initPyBullet()
-    dt: float = 0.0000375
+    dt: float = 0.00015
 
     # initialise the plane
     plane_id = p.loadURDF("plane.urdf")
