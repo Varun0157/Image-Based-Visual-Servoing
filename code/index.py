@@ -6,18 +6,19 @@ from typing import Union, Dict
 
 import numpy as np
 
+from save_image import save_rgb_image
 from robot_image import convertRobotImageToArr
 from servo import servo
 from robot_motion import get_velocity
 
-MAX_ITERATIONS = int(1e3)
+MAX_ITERATIONS = int(1e4)
 
 
 def initPyBullet() -> int:
-    pClient = p.connect(p.GUI)
+    pClient = p.connect(p.DIRECT)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
     p.setGravity(0, 0, -10)
-    p.setRealTimeSimulation(1)
+    # p.setRealTimeSimulation(1)
 
     return pClient
 
@@ -57,7 +58,7 @@ def main() -> None:
     obstacles = []
     for x_offset in [0, -1, 1]:
         for y_offset in [5]:
-            for z_offset in [0, 5]:
+            for z_offset in [0, 1]:
                 obstacles.append(
                     p.loadURDF(
                         "cube_small.urdf",
@@ -78,7 +79,7 @@ def main() -> None:
 
     sleep(1)
 
-    for _ in range(MAX_ITERATIONS):
+    for i in range(MAX_ITERATIONS):
         # getting the robot and the obstacle with the qrcode
         robot_pos, robot_orientation = p.getBasePositionAndOrientation(robot_id)
         goal_pos, goal_orientation = p.getBasePositionAndOrientation(goal_obs_id)
@@ -86,8 +87,6 @@ def main() -> None:
         # getting the rotation matrix
         robot_rotation_matrix = p.getMatrixFromQuaternion(robot_orientation)
         robot_rotation_matrix = np.array(object=robot_rotation_matrix).reshape(3, 3)
-
-        print(robot_pos)
 
         # initial camera vectors
         init_camera_vector = (0, 1, 0)  # y axis
@@ -126,6 +125,8 @@ def main() -> None:
         img_arr = convertRobotImageToArr(
             rgb_img, int(image_conf["height"]), int(image_conf["width"])
         )
+
+        save_rgb_image(img_details, i)
         # print(img_arr)
 
         servo_points = servo(img_arr)
@@ -163,7 +164,7 @@ def main() -> None:
                 transform[i][j] = robot_rotation_matrix[i][j]
         for i, val in enumerate([-robot_pos[0], -robot_pos[1], -robot_pos[2], 1]):
             transform[i][3] = val
-        print(transform)
+        # print(transform)
         velocity[3] = 1
 
         # NOTE: implementation says velocity[3] = 1 here, but I don't see why, so not adding it
