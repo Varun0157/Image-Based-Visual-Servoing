@@ -41,7 +41,7 @@ def get_image_config() -> Dict[str, Union[int, float]]:
 
 def main() -> None:
     _ = initPyBullet()
-    dt: float = 0.00015
+    dt: float = 0.0000375
 
     # initialise the plane
     plane_id = p.loadURDF("plane.urdf")
@@ -78,7 +78,7 @@ def main() -> None:
 
     sleep(1)
 
-    MAX_ERROR = 1
+    MIN_ERROR = 1e6
     for i in range(MAX_ITERATIONS):
         # getting the robot and the obstacle with the qrcode
         robot_pos, robot_orientation = p.getBasePositionAndOrientation(robot_id)
@@ -131,7 +131,7 @@ def main() -> None:
         servo_points = servo(img_arr)
 
         if not servo_points:
-            print("no aruco marker detected, rotating")
+            # print("no aruco marker detected, rotating")
             _, orientation = p.getBasePositionAndOrientation(robot_id)
             euler_orientation = p.getEulerFromQuaternion(orientation)
             p.resetBasePositionAndOrientation(
@@ -150,13 +150,14 @@ def main() -> None:
         # an aruco marker was detected
         error = get_error(servo_points)
         MSE = np.mean(error**2)
-        print(f"error: {error}, mse = {MSE}")
+        # print(f"error: {error}, mse = {MSE}")
         if MSE < 500:
             print("DONE")
             p.disconnect()
             break
-        elif MSE > MAX_ERROR:
-            MAX_ERROR = MSE
+        if MSE < MIN_ERROR:
+            MIN_ERROR = MSE
+            print(f"new min error: {MIN_ERROR}")
 
         velocity = get_velocity(servo_points)
 
