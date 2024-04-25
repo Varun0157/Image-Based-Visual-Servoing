@@ -154,7 +154,7 @@ def main() -> None:
         error = get_error(servo_points)
         MSE = np.mean(error**2)
         # print(f"error: {error}, mse = {MSE}")
-        if MSE < 410:
+        if MSE < 420:
             print("DONE")
             p.disconnect()
             break
