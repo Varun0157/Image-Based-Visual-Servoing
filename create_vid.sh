@@ -5,4 +5,4 @@ output_dir="./code/vid"
 
 mkdir -p "$output_dir"
 
-ffmpeg -f image2 -framerate 25 -i "$input_dir/rgbimage_%d.png" -vcodec libx264 -crf 22 "$output_dir/video.mp4"
+ffmpeg -i $input_dir/rgbimage_%d.png -c:v libx264 -strict -2 -preset slow -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -f mp4 $output_dir/output.mp4

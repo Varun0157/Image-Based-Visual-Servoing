@@ -17,7 +17,7 @@ def initPyBullet() -> int:
     pClient = p.connect(p.DIRECT)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
     p.setGravity(0, 0, -10)
-    # p.setRealTimeSimulation(1)
+    # p.setRealTimeSimulation(True)
 
     return pClient
 
@@ -48,7 +48,7 @@ def main() -> None:
 
     # initialise the robot
     robot_start_pos = [0, 0, 1]
-    robot_start_orientation = p.getQuaternionFromEuler([0, 0, 0 - (np.pi / 4)])
+    robot_start_orientation = p.getQuaternionFromEuler([0, 0, 0 - (2 * np.pi / 3)])
     robot_id = p.loadURDF("r2d2.urdf", robot_start_pos, robot_start_orientation)
 
     # loading obstacles, with the main cube at the first index
@@ -76,7 +76,7 @@ def main() -> None:
     texture_id = p.loadTexture("aruco_marker.png")
     p.changeVisualShape(goal_obs_id, -1, textureUniqueId=texture_id)
 
-    sleep(10)
+    sleep(5)
 
     MIN_ERROR = 1e6
     for i in range(MAX_ITERATIONS):
