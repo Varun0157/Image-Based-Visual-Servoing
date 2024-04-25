@@ -25,6 +25,8 @@ def jacobian(u: float, v: float, f=1, z=1) -> List[List[float]]:
 
 
 def get_error(points: List[List[int]]):
+    # create a get_score that takes a points list, final error is difference between both in 6 dof 
+    
     # randomly acquire a length 3 list of indexes in range(4)
     indices = [0, 1, 2] # consider randomising later
     reqPos = getRequiredPos()
