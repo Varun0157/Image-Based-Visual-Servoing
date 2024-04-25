@@ -47,12 +47,12 @@ def main() -> None:
     plane_id = p.loadURDF("plane.urdf")
 
     # initialise the robot
-    robot_start_pos = [0, 0, 1]
-    robot_start_orientation = p.getQuaternionFromEuler([0, 0, 0 - (2 * np.pi / 3)])
-    robot_id = p.loadURDF("r2d2.urdf", robot_start_pos, robot_start_orientation)
+    robot_pos = [0, 0, 1]
+    robot_orientation = [0, 0, 0 - (2 * np.pi / 3)]
+    # robot_id = p.loadURDF("r2d2.urdf", robot_start_pos, robot_start_orientation)
 
     # loading obstacles, with the main cube at the first index
-    base = robot_start_pos  # for now
+    base = robot_pos  # for now
     base_orn = p.getQuaternionFromEuler([0, 0, 0])
     obstacles = []
     for x_offset in [0, -1, 1]:
@@ -81,11 +81,13 @@ def main() -> None:
     MIN_ERROR = 1e6
     for i in range(MAX_ITERATIONS):
         # getting the robot and the obstacle with the qrcode
-        robot_pos, robot_orientation = p.getBasePositionAndOrientation(robot_id)
+        # robot_pos, robot_orientation = p.getBasePositionAndOrientation(robot_id)
         goal_pos, goal_orientation = p.getBasePositionAndOrientation(goal_obs_id)
 
         # getting the rotation matrix
-        robot_rotation_matrix = p.getMatrixFromQuaternion(robot_orientation)
+        robot_rotation_matrix = p.getMatrixFromQuaternion(
+            p.getQuaternionFromEuler(robot_orientation)
+        )
         robot_rotation_matrix = np.array(object=robot_rotation_matrix).reshape(3, 3)
 
         # initial camera vectors
@@ -132,26 +134,27 @@ def main() -> None:
 
         if not servo_points:
             # print("no aruco marker detected, rotating")
-            _, orientation = p.getBasePositionAndOrientation(robot_id)
-            euler_orientation = p.getEulerFromQuaternion(orientation)
-            p.resetBasePositionAndOrientation(
-                robot_id,
-                robot_pos,
-                p.getQuaternionFromEuler(
-                    [
-                        euler_orientation[0],
-                        euler_orientation[1],
-                        euler_orientation[2] + np.pi / 18,
-                    ]
-                ),
-            )
+            # _, orientation = p.getBasePositionAndOrientation(robot_id)
+            # euler_orientation = p.getEulerFromQuaternion(orientation)
+            # p.resetBasePositionAndOrientation(
+            #     robot_id,
+            #     robot_pos,
+            #     p.getQuaternionFromEuler(
+            #         [
+            #             euler_orientation[0],
+            #             euler_orientation[1],
+            #             euler_orientation[2] + np.pi / 18,
+            #         ]
+            #     ),
+            # )
+            robot_orientation[2] += np.pi / 18
             continue
 
         # an aruco marker was detected
         error = get_error(servo_points)
         MSE = np.mean(error**2)
         # print(f"error: {error}, mse = {MSE}")
-        if MSE < 410:
+        if MSE < 420:
             print("DONE")
             p.disconnect()
             break
@@ -161,8 +164,8 @@ def main() -> None:
 
         velocity = get_velocity(servo_points)
 
-        robot_pos = list(robot_pos)
-        robot_orientation = list(p.getEulerFromQuaternion(robot_orientation))
+        # robot_pos = list(robot_pos)
+        # robot_orientation = list(p.getEulerFromQuaternion(robot_orientation))
 
         # creating the transformation matrix
         #       [R R R -Tx]
@@ -183,12 +186,12 @@ def main() -> None:
         for i in range(3):
             robot_pos[i] += del_pos[i] * dt
 
-        del_orn = np.matmul(transform, [*velocity[3:], 1])
+        # del_orn = np.matmul(transform, [*velocity[3:], 1])
         # robot_orientation[0] += del_orn[0] * dt
         # robot_orientation[1] += del_orn[1] * dt
         robot_orientation[2] += velocity[5] * dt * 75
-        robot_orientation = p.getQuaternionFromEuler(robot_orientation)
-        p.resetBasePositionAndOrientation(robot_id, robot_pos, robot_orientation)
+        # robot_orientation = p.getQuaternionFromEuler(robot_orientation)
+        # p.resetBasePositionAndOrientation(robot_id, robot_pos, robot_orientation)
         sleep(0.01)
 
 
