@@ -1,6 +1,7 @@
 from PIL import Image, ImageDraw
+from matplotlib.pylab import f
 import numpy as np
-from typing import List
+from typing import List, Tuple
 
 
 def convertRobotImageToArr(arr: List, h: int, w: int) -> np.ndarray:
@@ -15,24 +16,25 @@ def convertRobotImageToArr(arr: List, h: int, w: int) -> np.ndarray:
     return np.array(img)
 
 
-def write_error(img_path: str, error: str) -> None:
+def write_text_to_image(
+    img_path: str, text: str, xy: Tuple[int, int], color: str
+) -> None:
     img = Image.open(img_path)
-    draw = ImageDraw.Draw(img)
 
-    text = f"error: {error}"
-    draw.text((10, 10), text, fill="red")
+    draw = ImageDraw.Draw(img)
+    draw.text(xy, text, fill=color)
 
     img.save(img_path)
 
 
 def save_rgb_image(img_arr: np.ndarray, index: int) -> str:
-    IMG_NAME = f"./rgbimage_{index}.png"
+    IMG_PATH = f"./rgbimage_{index}.png"
     img = Image.fromarray(img_arr)
-    img.save(IMG_NAME)
+    img.save(IMG_PATH)
 
-    return IMG_NAME
+    return IMG_PATH
 
 
-def save_with_error(img_arr: np.ndarray, index: int, error: str) -> None:
+def save_with_error(img_arr: np.ndarray, index: int, error: float) -> None:
     img_path = save_rgb_image(img_arr, index)
-    write_error(img_path, error)
+    write_text_to_image(img_path, f"error: {error}", (10, 10), "red")

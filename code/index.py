@@ -2,7 +2,7 @@ import pybullet as p
 import pybullet_data
 
 from time import sleep
-from typing import Union, Dict
+from typing import Tuple, Union, Dict, List
 
 import numpy as np
 
@@ -29,6 +29,8 @@ def get_image_config() -> Dict[str, Union[int, float]]:
     NEAR_VAL = 0.01
     FAR_VAL = 100
 
+    # make this functional, returning a bunch of gets
+    # also consider moving it to robot_image
     return {
         "width": WIDTH,
         "height": HEIGHT,
@@ -39,18 +41,8 @@ def get_image_config() -> Dict[str, Union[int, float]]:
     }
 
 
-def main() -> None:
-    _ = initPyBullet()
-    dt: float = 0.00015
-
-    # initialise the plane
+def init_scene(robot_pos: list[int]) -> Tuple[int, List[int]]:
     plane_id = p.loadURDF("plane.urdf")
-
-    # initialise the robot
-    robot_pos = [0, 0, 1]
-    robot_orientation = [0, 0, 0 - (2 * np.pi / 3)]
-    # robot_id = p.loadURDF("r2d2.urdf", robot_start_pos, robot_start_orientation)
-
     # loading obstacles, with the main cube at the first index
     base = robot_pos  # for now
     base_orn = p.getQuaternionFromEuler([0, 0, 0])
@@ -71,17 +63,30 @@ def main() -> None:
                     )
                 )
 
+
+def set_aruco_marker_texture(obstacle_id: int) -> None:
+    texture_id = p.loadTexture("aruco_marker.png")
+    p.changeVisualShape(obstacle_id, -1, textureUniqueId=texture_id)
+
+
+def main() -> None:
+    _ = initPyBullet()
+    dt: float = 0.00015
+
+    # initialise the robot
+    robot_pos = [0, 0, 1]
+    robot_orientation = [0, 0, 0 - (2 * np.pi / 3)]
+
+    plane_id, obstacles = init_scene(robot_pos)
     # taking [0, 5, 0] as the obstacle with the qrcode
     goal_obs_id = obstacles[0]
-    texture_id = p.loadTexture("aruco_marker.png")
-    p.changeVisualShape(goal_obs_id, -1, textureUniqueId=texture_id)
+    set_aruco_marker_texture(goal_obs_id)
 
     sleep(5)
 
     MIN_ERROR = 1e6
     for i in range(MAX_ITERATIONS):
         # getting the robot and the obstacle with the qrcode
-        # robot_pos, robot_orientation = p.getBasePositionAndOrientation(robot_id)
         goal_pos, goal_orientation = p.getBasePositionAndOrientation(goal_obs_id)
 
         # getting the rotation matrix
@@ -133,20 +138,7 @@ def main() -> None:
         servo_points = servo(img_arr)
 
         if not servo_points:
-            # print("no aruco marker detected, rotating")
-            # _, orientation = p.getBasePositionAndOrientation(robot_id)
-            # euler_orientation = p.getEulerFromQuaternion(orientation)
-            # p.resetBasePositionAndOrientation(
-            #     robot_id,
-            #     robot_pos,
-            #     p.getQuaternionFromEuler(
-            #         [
-            #             euler_orientation[0],
-            #             euler_orientation[1],
-            #             euler_orientation[2] + np.pi / 18,
-            #         ]
-            #     ),
-            # )
+            print("No aruco marker detected, rotating")
             robot_orientation[2] += np.pi / 18
             continue
 
