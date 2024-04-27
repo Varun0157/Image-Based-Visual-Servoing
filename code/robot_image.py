@@ -27,14 +27,13 @@ def write_text_to_image(
     img.save(img_path)
 
 
-def save_rgb_image(img_arr: np.ndarray, index: int) -> str:
-    IMG_PATH = f"./rgbimage_{index}.png"
+def save_rgb_image(img_arr: np.ndarray, img_path: str) -> None:
     img = Image.fromarray(img_arr)
-    img.save(IMG_PATH)
-
-    return IMG_PATH
+    img.save(img_path)
 
 
-def save_with_error(img_arr: np.ndarray, index: int, error: float) -> None:
-    img_path = save_rgb_image(img_arr, index)
+def save_with_error(
+    img_path: str, img_arr: np.ndarray, index: int, error: float
+) -> None:
+    save_rgb_image(img_arr, img_path)
     write_text_to_image(img_path, f"error: {error}", (10, 10), "red")

@@ -8,7 +8,7 @@ import numpy as np
 
 from robot_image import convertRobotImageToArr, save_rgb_image
 from servo import servo
-from robot_motion import get_error, get_velocity
+from robot_motion import get_error_mag, get_error_vec, get_velocity
 
 MAX_ITERATIONS = int(1e4)
 
@@ -69,6 +69,87 @@ def set_aruco_marker_texture(obstacle_id: int) -> None:
     p.changeVisualShape(obstacle_id, -1, textureUniqueId=texture_id)
 
 
+def get_robot_rotation_matrix(robot_orientation: List[float]) -> np.ndarray:
+    robot_rotation_matrix = p.getMatrixFromQuaternion(
+        p.getQuaternionFromEuler(robot_orientation)
+    )
+    return np.array(object=robot_rotation_matrix).reshape(3, 3)
+
+
+def get_view_matrix(
+    init_camera_vector: Tuple[int, int, int],
+    init_up_vector: Tuple[int, int, int],
+    robot_pos: List[int],
+    robot_rotation_matrix: np.ndarray,
+) -> np.ndarray:
+    approx_view_z_offset = 0.7
+    robot_view_point = [
+        robot_pos[0],
+        robot_pos[1],
+        robot_pos[2] + approx_view_z_offset,
+    ]
+    camera_vector = robot_rotation_matrix.dot(init_camera_vector)
+    up_vector = robot_rotation_matrix.dot(init_up_vector)
+    return p.computeViewMatrix(robot_view_point, robot_pos + camera_vector, up_vector)
+
+
+def get_projection_matrix() -> np.ndarray:
+    image_conf = get_image_config()
+    return p.computeProjectionMatrixFOV(
+        image_conf["fov"],
+        image_conf["aspect"],
+        image_conf["near_val"],
+        image_conf["far_val"],
+    )
+
+
+def get_transformation_matrix(
+    robot_pos: List[int], robot_orientation: List[float]
+) -> np.ndarray:
+    # creating the transformation matrix
+    #       [R R R -Tx]
+    #       [R R R -Ty]
+    #       [R R R -Tz]
+    #       [0 0 0  1 ]
+    robot_rotation_matrix = get_robot_rotation_matrix(robot_orientation)
+    transform = np.zeros((4, 4))
+    for i in range(3):
+        for j in range(3):
+            transform[i][j] = robot_rotation_matrix[i][j]
+    for i, val in enumerate([-robot_pos[0], -robot_pos[1], -robot_pos[2], 1]):
+        transform[i][3] = val
+    # print(transform)
+
+    return transform
+
+
+def capture_camera_image(
+    robot_pos: List[int],
+    robot_rotation_matrix: List[float],
+) -> np.ndarray:
+    # robot rotation matrix
+    # initial camera vectors
+    init_camera_vector = (0, 1, 0)  # y axis
+    init_up_vector = (0, 0, 1)  # z axis
+
+    # calculating the view matrix
+    view_matrix = get_view_matrix(
+        init_camera_vector, init_up_vector, robot_pos, robot_rotation_matrix
+    )
+    # calculating the projection matrix
+    projection_matrix = get_projection_matrix()
+
+    # capturinng the image
+    image_conf = get_image_config()
+    img_details = p.getCameraImage(
+        image_conf["width"],
+        image_conf["height"],
+        view_matrix,
+        projection_matrix,
+    )
+    return img_details
+
+
 def main() -> None:
     _ = initPyBullet()
     dt: float = 0.00015
@@ -86,54 +167,17 @@ def main() -> None:
 
     MIN_ERROR = 1e6
     for i in range(MAX_ITERATIONS):
-        # getting the robot and the obstacle with the qrcode
-        goal_pos, goal_orientation = p.getBasePositionAndOrientation(goal_obs_id)
-
-        # getting the rotation matrix
-        robot_rotation_matrix = p.getMatrixFromQuaternion(
-            p.getQuaternionFromEuler(robot_orientation)
-        )
-        robot_rotation_matrix = np.array(object=robot_rotation_matrix).reshape(3, 3)
-
-        # initial camera vectors
-        init_camera_vector = (0, 1, 0)  # y axis
-        init_up_vector = (0, 0, 1)  # z axis
-
-        # rotated vectors
-        approx_view_z_offset = 0.7
-        robot_view_point = [
-            robot_pos[0],
-            robot_pos[1],
-            robot_pos[2] + approx_view_z_offset,
-        ]
-        camera_vector = robot_rotation_matrix.dot(init_camera_vector)
-        up_vector = robot_rotation_matrix.dot(init_up_vector)
-        view_matrix = p.computeViewMatrix(
-            robot_view_point, robot_pos + 2 * camera_vector, up_vector
-        )
-
         p.stepSimulation()
 
-        image_conf = get_image_config()
-        projection_matrix = p.computeProjectionMatrixFOV(
-            image_conf["fov"],
-            image_conf["aspect"],
-            image_conf["near_val"],
-            image_conf["far_val"],
-        )
-        img_details = p.getCameraImage(
-            image_conf["width"],
-            image_conf["height"],
-            view_matrix,
-            projection_matrix,
-        )
-
+        img_details = capture_camera_image(robot_pos, robot_orientation)
         rgb_img = img_details[2]
+
+        image_conf = get_image_config()
         img_arr = convertRobotImageToArr(
             rgb_img, int(image_conf["height"]), int(image_conf["width"])
         )
 
-        save_rgb_image(img_arr, i)
+        save_rgb_image(img_arr, f"./rgbimage_{i}.png")
 
         servo_points = servo(img_arr)
 
@@ -143,9 +187,8 @@ def main() -> None:
             continue
 
         # an aruco marker was detected
-        error = get_error(servo_points)
-        MSE = np.mean(error**2)
-        # print(f"error: {error}, mse = {MSE}")
+        error_vec = get_error_vec(servo_points)
+        MSE = get_error_mag(error_vec)
         if MSE < 420:
             print("DONE")
             p.disconnect()
@@ -155,22 +198,7 @@ def main() -> None:
             print(f"new min error: {MIN_ERROR}")
 
         velocity = get_velocity(servo_points)
-
-        # robot_pos = list(robot_pos)
-        # robot_orientation = list(p.getEulerFromQuaternion(robot_orientation))
-
-        # creating the transformation matrix
-        #       [R R R -Tx]
-        #       [R R R -Ty]
-        #       [R R R -Tz]
-        #       [0 0 0  1 ]
-        transform = np.zeros((4, 4))
-        for i in range(3):
-            for j in range(3):
-                transform[i][j] = robot_rotation_matrix[i][j]
-        for i, val in enumerate([-robot_pos[0], -robot_pos[1], -robot_pos[2], 1]):
-            transform[i][3] = val
-        # print(transform)
+        transform = get_transformation_matrix(robot_pos, robot_orientation)
 
         # NOTE: implementation says velocity[3] = 1 here, but I don't see why, so not adding it
         del_pos = np.matmul(transform, [*velocity[:3], 1])

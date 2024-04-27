@@ -5,6 +5,7 @@ from typing import List
 
 requiredPos = None
 
+
 def getRequiredPos() -> List[List[int]]:
     global requiredPos
     if requiredPos is None:
@@ -24,18 +25,23 @@ def jacobian(u: float, v: float, f=1, z=1) -> List[List[float]]:
     ]
 
 
-def get_error(points: List[List[int]]):
-    # create a get_score that takes a points list, final error is difference between both in 6 dof 
-    
+def get_error_vec(points: List[List[int]]) -> np.ndarray:
+    # create a get_score that takes a points list, final error is difference between both in 6 dof
+
     # randomly acquire a length 3 list of indexes in range(4)
-    indices = [0, 1, 2] # consider randomising later
+    indices = [0, 1, 2]  # consider randomising later
     reqPos = getRequiredPos()
     error = np.array([reqPos[i][j] - points[i][j] for i in indices for j in range(2)])
     return error
 
 
-def get_velocity(points: List[List[int]]):
-    error = get_error(points)
+def get_error_mag(error: np.ndarray) -> float:
+    MSE = np.mean(error**2)
+    return float(MSE)
+
+
+def get_velocity(points: List[List[int]]) -> np.ndarray:
+    error = get_error_vec(points)
 
     J = []
     for i in range(3):
