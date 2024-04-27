@@ -1,3 +1,4 @@
+import sys
 import pybullet as p
 import pybullet_data
 
@@ -62,6 +63,7 @@ def init_scene(robot_pos: list[int]) -> Tuple[int, List[int]]:
                         globalScaling=20,
                     )
                 )
+    return plane_id, obstacles
 
 
 def set_aruco_marker_texture(obstacle_id: int) -> None:
@@ -125,7 +127,7 @@ def get_transformation_matrix(
 
 def capture_camera_image(
     robot_pos: List[int],
-    robot_rotation_matrix: List[float],
+    robot_orientation: List[float],
 ) -> np.ndarray:
     # robot rotation matrix
     # initial camera vectors
@@ -134,7 +136,10 @@ def capture_camera_image(
 
     # calculating the view matrix
     view_matrix = get_view_matrix(
-        init_camera_vector, init_up_vector, robot_pos, robot_rotation_matrix
+        init_camera_vector,
+        init_up_vector,
+        robot_pos,
+        get_robot_rotation_matrix(robot_orientation),
     )
     # calculating the projection matrix
     projection_matrix = get_projection_matrix()
@@ -148,6 +153,23 @@ def capture_camera_image(
         projection_matrix,
     )
     return img_details
+
+
+REQ_ERROR = 420
+MIN_ERROR = float("inf")
+
+
+def update_error(servo_points: List[List[int]]) -> None:
+    global REQ_ERROR, MIN_ERROR
+
+    error = get_error_mag(get_error_vec(servo_points))
+    if error < MIN_ERROR:
+        MIN_ERROR = error
+        print(f"new min error: {MIN_ERROR}")
+    if error < REQ_ERROR:
+        print("DONE")
+        p.disconnect()
+        sys.exit(0)
 
 
 def main() -> None:
@@ -165,12 +187,10 @@ def main() -> None:
 
     sleep(5)
 
-    MIN_ERROR = 1e6
     for i in range(MAX_ITERATIONS):
         p.stepSimulation()
 
-        img_details = capture_camera_image(robot_pos, robot_orientation)
-        rgb_img = img_details[2]
+        rgb_img = capture_camera_image(robot_pos, robot_orientation)[2]
 
         image_conf = get_image_config()
         img_arr = convertRobotImageToArr(
@@ -180,38 +200,24 @@ def main() -> None:
         save_rgb_image(img_arr, f"./rgbimage_{i}.png")
 
         servo_points = servo(img_arr)
-
         if not servo_points:
             print("No aruco marker detected, rotating")
             robot_orientation[2] += np.pi / 18
             continue
 
-        # an aruco marker was detected
-        error_vec = get_error_vec(servo_points)
-        MSE = get_error_mag(error_vec)
-        if MSE < 420:
-            print("DONE")
-            p.disconnect()
-            break
-        if MSE < MIN_ERROR:
-            MIN_ERROR = MSE
-            print(f"new min error: {MIN_ERROR}")
+        update_error(servo_points=servo_points)
 
-        velocity = get_velocity(servo_points)
+        velocity = get_velocity(points=servo_points)
         transform = get_transformation_matrix(robot_pos, robot_orientation)
 
-        # NOTE: implementation says velocity[3] = 1 here, but I don't see why, so not adding it
         del_pos = np.matmul(transform, [*velocity[:3], 1])
-        # print(f"velocity: {velocity}, delpos:{del_pos}", sep="\n")
         for i in range(3):
             robot_pos[i] += del_pos[i] * dt
 
-        # del_orn = np.matmul(transform, [*velocity[3:], 1])
-        # robot_orientation[0] += del_orn[0] * dt
-        # robot_orientation[1] += del_orn[1] * dt
-        robot_orientation[2] += velocity[5] * dt * 75
-        # robot_orientation = p.getQuaternionFromEuler(robot_orientation)
-        # p.resetBasePositionAndOrientation(robot_id, robot_pos, robot_orientation)
+        del_orn = np.matmul(transform, [*velocity[3:], 1])
+        for i in range(3):
+            robot_orientation[i] += del_orn[i] * dt
+
         sleep(0.01)
 
 
