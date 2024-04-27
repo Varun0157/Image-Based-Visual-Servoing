@@ -3,6 +3,7 @@ import cv2 as cv
 from servo import servo
 from typing import List
 
+LAMBDA = 1
 requiredPos = None
 
 
@@ -17,12 +18,24 @@ def getRequiredPos() -> List[List[int]]:
     return requiredPos
 
 
-def jacobian(u: float, v: float, f=1, z=1) -> List[List[float]]:
+def jacobian(X: float, Y: float, Z=1) -> List[List[float]]:
     # NOTE: confirm this with the paper jacobian later. I don't think this is fully right.
+    x = X / Z
+    y = Y / Z
     return [
-        [-f / z, 0, u / z, u * v / z, -(f + u * u) / f, v],
-        [0, -f / z, v / z, (f + v * v) / f, -u * v / f, -u],
+        [-1 / Z, 0, x / Z, x * y, -(1 + x**2), y],
+        [0, -1 / Z, Y / Z, (1 + y**2), -x * y, -x],
     ]
+
+
+def get_velocity(points: List[List[int]]) -> np.ndarray:
+    error = get_error_vec(points)
+
+    J = np.vstack([jacobian(X=points[i][0], Y=points[i][1], Z=1) for i in range(3)])
+    J_pinv = np.linalg.pinv(J)
+
+    vel = -LAMBDA * np.matmul(J_pinv, error)
+    return vel
 
 
 def get_error_vec(points: List[List[int]]) -> np.ndarray:
@@ -40,15 +53,4 @@ def get_error_mag(error: np.ndarray) -> float:
     return float(MSE)
 
 
-def get_velocity(points: List[List[int]]) -> np.ndarray:
-    error = get_error_vec(points)
-
-    J = []
-    for i in range(3):
-        J += jacobian(u=points[i][0], v=points[i][1], z=1)
-    J_inv = np.linalg.pinv(J)  # NOTE: implementation takes inv
-
-    vel = np.matmul(J_inv, error)
-    # converting this velocity from image frame to robot frame
-    # velocity = np.array([vel[2], -vel[1], -vel[0], vel[5], -vel[3], -vel[4]])
-    return vel
+MIN_ERROR = float("inf")
