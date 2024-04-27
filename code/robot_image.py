@@ -1,4 +1,4 @@
-from PIL import Image
+from PIL import Image, ImageDraw
 import numpy as np
 from typing import List
 
@@ -15,6 +15,24 @@ def convertRobotImageToArr(arr: List, h: int, w: int) -> np.ndarray:
     return np.array(img)
 
 
-def save_rgb_image(img: np.ndarray, index: int) -> None:
-    rgbim = Image.fromarray(img)
-    rgbim.save(f"./img/rgbimage_{index}.png")
+def write_error(img_path: str, error: str) -> None:
+    img = Image.open(img_path)
+    draw = ImageDraw.Draw(img)
+
+    text = f"error: {error}"
+    draw.text((10, 10), text, fill="red")
+
+    img.save(img_path)
+
+
+def save_rgb_image(img_arr: np.ndarray, index: int) -> str:
+    IMG_NAME = f"./rgbimage_{index}.png"
+    img = Image.fromarray(img_arr)
+    img.save(IMG_NAME)
+
+    return IMG_NAME
+
+
+def save_with_error(img_arr: np.ndarray, index: int, error: str) -> None:
+    img_path = save_rgb_image(img_arr, index)
+    write_error(img_path, error)
