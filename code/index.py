@@ -48,9 +48,9 @@ def init_scene(robot_pos: list[int]) -> Tuple[int, List[int]]:
     base = robot_pos  # for now
     base_orn = p.getQuaternionFromEuler([0, 0, 0])
     obstacles = []
-    for x_offset in [0, -1, 1]:
-        for y_offset in [5]:
-            for z_offset in [0, 1]:
+    for z_offset in [0, 1]:
+        for y_offset in [15]:
+            for x_offset in [0, -1, 1]:
                 obstacles.append(
                     p.loadURDF(
                         "cube_small.urdf",
@@ -63,6 +63,7 @@ def init_scene(robot_pos: list[int]) -> Tuple[int, List[int]]:
                         globalScaling=20,
                     )
                 )
+    sleep(2)
     return plane_id, obstacles
 
 
@@ -156,7 +157,7 @@ def capture_camera_image(
     return img_details
 
 
-REQ_ERROR = 420
+REQ_ERROR = 5000
 MIN_ERROR = float("inf")
 
 
@@ -164,11 +165,15 @@ def update_error(servo_points: List[List[int]], i: int | None = None) -> None:
     global REQ_ERROR, MIN_ERROR
 
     error = get_error_mag(get_error_vec(servo_points))
+
+    if i is not None:
+        print(f"{i}:", end="")
     if error < MIN_ERROR:
         MIN_ERROR = error
-        if i is not None:
-            print(f"{i}:", end="")
         print(f"new min error: {MIN_ERROR}")
+    else:
+        print(f"increase in error: {error - MIN_ERROR}")
+
     if error < REQ_ERROR:
         print("DONE")
         p.disconnect()
@@ -211,16 +216,15 @@ def main() -> None:
         update_error(servo_points=servo_points, i=i)
 
         velocity = get_velocity(points=servo_points)
-        print(velocity)
-        # transform = get_transformation_matrix(robot_pos, robot_orientation)
+        transform = get_transformation_matrix(robot_pos, robot_orientation)
 
-        # del_pos = np.matmul(transform, [*velocity[:3], 1])
-        # for i in range(3):
-        #     robot_pos[i] += del_pos[i] / del_pos[-1] * dt
+        del_pos = np.matmul(transform, [*velocity[:3], 1])
+        for i in range(3):
+            robot_pos[i] += del_pos[i] / del_pos[-1] * dt
 
-        # del_orn = np.matmul(transform, [*velocity[3:], 1])
-        # for i in range(3):
-        #     robot_orientation[i] += del_orn[i] / del_orn[-1] * dt
+        del_orn = np.matmul(transform, [*velocity[3:], 1])
+        for i in range(3):
+            robot_orientation[i] += del_orn[i] / del_orn[-1] * dt
 
         sleep(0.01)
 
