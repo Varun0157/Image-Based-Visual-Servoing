@@ -9,7 +9,7 @@ requiredPos = None
 
 def getRequiredPos() -> List[List[int]]:
     global requiredPos
-    
+
     if requiredPos is None:
         frame = cv.imread("target.png")
         requiredPos = servo(frame)
