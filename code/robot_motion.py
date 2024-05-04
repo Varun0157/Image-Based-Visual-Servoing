@@ -18,7 +18,7 @@ def getRequiredPos() -> List[List[float]]:
     return requiredPos
 
 
-def jacobian(X: float, Y: float, Z=1) -> List[List[float]]:
+def jacobian(X: float, Y: float, Z: float = 1.0) -> List[List[float]]:
     # NOTE: confirm this with the paper jacobian later. I don't think this is fully right.
     x = X / Z
     y = Y / Z
@@ -28,10 +28,21 @@ def jacobian(X: float, Y: float, Z=1) -> List[List[float]]:
     ]
 
 
-def get_velocity(points: List[List[float]]) -> np.ndarray:
+def get_velocity(
+    points: List[List[float]], depth_buffer: List[List[float]]
+) -> np.ndarray:
     error = get_error_vec(points)
 
-    J = np.vstack([jacobian(X=points[i][0], Y=points[i][1], Z=1) for i in range(3)])
+    J = np.vstack(
+        [
+            jacobian(
+                X=int(points[i][0]),
+                Y=int(points[i][1]),
+                Z=(depth_buffer[int(points[i][0])][int(points[i][1])]),
+            )
+            for i in range(3)
+        ]
+    )
     J_pinv = np.linalg.pinv(J)
 
     vel = -LAMBDA * np.matmul(J_pinv, error)

@@ -49,7 +49,7 @@ def init_scene(robot_pos: list[float]) -> Tuple[int, List[int]]:
     base_orn = p.getQuaternionFromEuler([0, 0, 0])
     obstacles = []
     for z_offset in [0, 1]:
-        for y_offset in [5]:
+        for y_offset in [7.5]:
             for x_offset in [0, -1, 1]:
                 obstacles.append(
                     p.loadURDF(
@@ -66,8 +66,6 @@ def init_scene(robot_pos: list[float]) -> Tuple[int, List[int]]:
 
     goal_obs_id = obstacles[0]  # taking the 0th as the goal
     set_aruco_marker_texture(goal_obs_id)
-
-    sleep(2)
 
     return plane_id, obstacles
 
@@ -90,8 +88,8 @@ def get_view_matrix(
     robot_pos: List[float],
     robot_rotation_matrix: np.ndarray,
 ) -> np.ndarray:
-    camera_vector = robot_rotation_matrix.dot(init_camera_vector)
-    up_vector = robot_rotation_matrix.dot(init_up_vector)
+    camera_vector = np.dot(robot_rotation_matrix, init_camera_vector)
+    up_vector = np.dot(robot_rotation_matrix, init_up_vector)
     return p.computeViewMatrix(robot_pos, robot_pos + camera_vector, up_vector)
 
 
@@ -157,7 +155,7 @@ def capture_camera_image(
 
 
 MIN_ERROR = float("inf")
-ERROR_GROWTH_LIMIT = 1.2
+ERROR_GROWTH_LIMIT = 1.01
 
 
 def update_error(servo_points: List[List[float]], i: int | None = None) -> None:
@@ -171,7 +169,10 @@ def update_error(servo_points: List[List[float]], i: int | None = None) -> None:
         MIN_ERROR = error
         print(f"new min error: {MIN_ERROR}")
     else:
-        print(f"increase in error: {error - MIN_ERROR}")
+        if error > MIN_ERROR:
+            print(f"increase from min: {error - MIN_ERROR}")
+        else:
+            print(f"error remained same: {error}")
 
     if error > ERROR_GROWTH_LIMIT * MIN_ERROR:
         # sign of divergence
@@ -196,7 +197,7 @@ def save_image(
         img_arr,
         f"./img/rgbimage_{i}.png",
         error_str,
-        "green" if error_mag and error_mag < MIN_ERROR else "red",
+        "green" if (error_mag and error_mag <= MIN_ERROR) else "red",
     )
 
 
@@ -232,11 +233,11 @@ def main() -> None:
     for i in range(MAX_ITERATIONS):
         p.stepSimulation()
 
-        rgb_img = capture_camera_image(robot_pos, robot_orientation)[2]
+        img = capture_camera_image(robot_pos, robot_orientation)
 
         img_conf = get_image_config()
         img_arr = convertRobotImageToArr(
-            rgb_img, int(img_conf["height"]), int(img_conf["width"])
+            img[2], int(img_conf["height"]), int(img_conf["width"])
         )
 
         servo_points = servo(img_arr)
@@ -249,7 +250,7 @@ def main() -> None:
 
         update_error(servo_points=servo_points, i=i)
 
-        velocity = get_velocity(points=servo_points)
+        velocity = get_velocity(points=servo_points, depth_buffer=img[3])
         transform = get_transformation_matrix(robot_pos, robot_orientation)
 
         robot_pos, robot_orientation = update_pos_and_orn(
