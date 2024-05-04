@@ -1,3 +1,4 @@
+from functools import cmp_to_key
 import numpy as np
 import cv2 as cv
 from typing import List, Union, Tuple
@@ -47,17 +48,9 @@ def servo(img_arr: np.ndarray) -> Union[List[List[int]], None]:
     corners = corners.reshape(4, 2)
     corners = corners.astype(int)
 
-    top_left = list(corners[0].ravel())
-    top_right = list(corners[1].ravel())
-    bottom_right = list(corners[2].ravel())
-    bottom_left = list(corners[3].ravel())
-
-    points = [top_left, top_right, bottom_right, bottom_left]
-    points.sort()
-    if points[0][1] > points[1][1]:
-        points[0][1], points[1][1] = points[1][1], points[0][1]
-    if points[2][1] > points[3][1]:
-        points[2][1], points[3][1] = points[3][1], points[2][1]
+    points = sorted(
+        [list(corner.ravel()) for corner in corners], key=lambda a: (a[1], a[0])
+    )
 
     # mark_center(img_arr, points)
 
