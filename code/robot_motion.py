@@ -42,9 +42,15 @@ def get_error_vec(points: List[List[int]]) -> np.ndarray:
     # create a get_score that takes a points list, final error is difference between both in 6 dof
 
     # consider randomly acquire a length 3 list of indexes in range(4)
-    indices = [0, 1, 2]
+    indices = [1, 2, 3]
     reqPos = getRequiredPos()
-    error = np.array([points[i][j] - reqPos[i][j] for i in indices for j in range(2)])
+    error = np.array(
+        [
+            points[indices[i]][j] - reqPos[indices[i]][j]
+            for i in range(2)
+            for j in range(2)
+        ]
+    )
     return error
 
 
