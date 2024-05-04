@@ -31,6 +31,8 @@ def save_rgb_image(img_arr: np.ndarray, img_path: str) -> None:
     img.save(img_path)
 
 
-def save_with_error(img_arr: np.ndarray, img_path: str, error: str) -> None:
+def save_with_error(
+    img_arr: np.ndarray, img_path: str, error: str, color: str = "black"
+) -> None:
     save_rgb_image(img_arr, img_path)
-    write_text_to_image(img_path, f"error: {error}", (10, 10), "red")
+    write_text_to_image(img_path, f"error: {error}", (10, 10), color)

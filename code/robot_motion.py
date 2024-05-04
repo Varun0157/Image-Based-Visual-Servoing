@@ -7,7 +7,7 @@ LAMBDA = 1
 requiredPos = None
 
 
-def getRequiredPos() -> List[List[int]]:
+def getRequiredPos() -> List[List[float]]:
     global requiredPos
 
     if requiredPos is None:
@@ -28,7 +28,7 @@ def jacobian(X: float, Y: float, Z=1) -> List[List[float]]:
     ]
 
 
-def get_velocity(points: List[List[int]]) -> np.ndarray:
+def get_velocity(points: List[List[float]]) -> np.ndarray:
     error = get_error_vec(points)
 
     J = np.vstack([jacobian(X=points[i][0], Y=points[i][1], Z=1) for i in range(3)])
@@ -38,11 +38,11 @@ def get_velocity(points: List[List[int]]) -> np.ndarray:
     return vel
 
 
-def get_error_vec(points: List[List[int]]) -> np.ndarray:
+def get_error_vec(points: List[List[float]]) -> np.ndarray:
     # create a get_score that takes a points list, final error is difference between both in 6 dof
 
     # consider randomly acquire a length 3 list of indexes in range(4)
-    indices = [1, 2, 3]
+    indices = [0, 1, 2]
     reqPos = getRequiredPos()
     error = np.array(
         [

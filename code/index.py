@@ -1,4 +1,4 @@
-import sys
+import sys, os
 import pybullet as p
 import pybullet_data
 
@@ -25,7 +25,7 @@ def initPyBullet() -> int:
 
 def get_image_config() -> Dict[str, Union[int, float]]:
     WIDTH = 800
-    HEIGHT = 600
+    HEIGHT = 500
     FOV = 90
     NEAR_VAL = 0.01
     FAR_VAL = 100
@@ -42,14 +42,14 @@ def get_image_config() -> Dict[str, Union[int, float]]:
     }
 
 
-def init_scene(robot_pos: list[int]) -> Tuple[int, List[int]]:
+def init_scene(robot_pos: list[float]) -> Tuple[int, List[int]]:
     plane_id = p.loadURDF("plane.urdf")
     # loading obstacles, with the main cube at the first index
     base = robot_pos  # for now
     base_orn = p.getQuaternionFromEuler([0, 0, 0])
     obstacles = []
     for z_offset in [0, 1]:
-        for y_offset in [10]:
+        for y_offset in [5]:
             for x_offset in [0, -1, 1]:
                 obstacles.append(
                     p.loadURDF(
@@ -63,7 +63,12 @@ def init_scene(robot_pos: list[int]) -> Tuple[int, List[int]]:
                         globalScaling=20,
                     )
                 )
+
+    goal_obs_id = obstacles[0]  # taking the 0th as the goal
+    set_aruco_marker_texture(goal_obs_id)
+
     sleep(2)
+
     return plane_id, obstacles
 
 
@@ -82,18 +87,12 @@ def get_robot_rotation_matrix(robot_orientation: List[float]) -> np.ndarray:
 def get_view_matrix(
     init_camera_vector: Tuple[int, int, int],
     init_up_vector: Tuple[int, int, int],
-    robot_pos: List[int],
+    robot_pos: List[float],
     robot_rotation_matrix: np.ndarray,
 ) -> np.ndarray:
-    approx_view_z_offset = 0.7
-    robot_view_point = [
-        robot_pos[0],
-        robot_pos[1],
-        robot_pos[2] + approx_view_z_offset,
-    ]
     camera_vector = robot_rotation_matrix.dot(init_camera_vector)
     up_vector = robot_rotation_matrix.dot(init_up_vector)
-    return p.computeViewMatrix(robot_view_point, robot_pos + camera_vector, up_vector)
+    return p.computeViewMatrix(robot_pos, robot_pos + camera_vector, up_vector)
 
 
 def get_projection_matrix() -> np.ndarray:
@@ -107,7 +106,7 @@ def get_projection_matrix() -> np.ndarray:
 
 
 def get_transformation_matrix(
-    robot_pos: List[int], robot_orientation: List[float]
+    robot_pos: List[float], robot_orientation: List[float]
 ) -> np.ndarray:
     # creating the transformation matrix
     robot_rotation_matrix = get_robot_rotation_matrix(robot_orientation)
@@ -128,7 +127,7 @@ def get_transformation_matrix(
 
 
 def capture_camera_image(
-    robot_pos: List[int],
+    robot_pos: List[float],
     robot_orientation: List[float],
 ) -> np.ndarray:
     # robot rotation matrix
@@ -157,12 +156,12 @@ def capture_camera_image(
     return img_details
 
 
-REQ_ERROR = 200
 MIN_ERROR = float("inf")
+ERROR_GROWTH_LIMIT = 1.2
 
 
-def update_error(servo_points: List[List[int]], i: int | None = None) -> None:
-    global REQ_ERROR, MIN_ERROR
+def update_error(servo_points: List[List[float]], i: int | None = None) -> None:
+    global MIN_ERROR
 
     error = get_error_mag(get_error_vec(servo_points))
 
@@ -174,49 +173,77 @@ def update_error(servo_points: List[List[int]], i: int | None = None) -> None:
     else:
         print(f"increase in error: {error - MIN_ERROR}")
 
-    if error < REQ_ERROR or error > 1.5 * MIN_ERROR:
+    if error > ERROR_GROWTH_LIMIT * MIN_ERROR:
+        # sign of divergence
         print("DONE")
         p.disconnect()
         sys.exit(0)
 
 
+def save_image(
+    servo_points: List[List[float]] | None, i: int, img_arr: np.ndarray
+) -> None:
+    # create the img directory if it does not exist
+    if not os.path.exists("img"):
+        os.makedirs("img")
+
+    global MIN_ERROR
+
+    error_mag = get_error_mag(get_error_vec(servo_points)) if servo_points else None
+    error_str = f"{error_mag:.2f}" if error_mag else "undefined"
+
+    save_with_error(
+        img_arr,
+        f"./img/rgbimage_{i}.png",
+        error_str,
+        "green" if error_mag and error_mag < MIN_ERROR else "red",
+    )
+
+
+def update_pos_and_orn(
+    transform: np.ndarray,
+    velocity: np.ndarray,
+    robot_pos: List[float],
+    robot_orn: List[float],
+    dt: float,
+) -> Tuple[List[float], List[float]]:
+    del_pos = np.matmul(transform, [*velocity[:3], 1])
+    for i in range(3):
+        robot_pos[i] += (del_pos[i] / del_pos[-1]) * dt
+
+    del_orn = np.matmul(transform, [*velocity[3:], 1])
+    for i in range(3):
+        robot_orn[i] += (del_orn[i] / del_orn[-1]) * dt
+
+    return robot_pos, robot_orn
+
+
 def main() -> None:
     _ = initPyBullet()
-    dt: float = 0.00015
+    dt: float = 0.0001
 
     # initialise the robot
-    robot_pos = [0, 0, 1]
-    robot_orientation = [0, 0, 0.0 - np.pi * 2 / 3]
+    robot_pos = [0, 0, 1.0]
+    robot_orientation = [0, 0, 0 - np.pi / 3]
 
     plane_id, obstacles = init_scene(robot_pos)
-    # taking [0, 5, 0] as the obstacle with the qrcode
-    goal_obs_id = obstacles[0]
-    set_aruco_marker_texture(goal_obs_id)
 
     sleep(5)
-
     for i in range(MAX_ITERATIONS):
         p.stepSimulation()
 
         rgb_img = capture_camera_image(robot_pos, robot_orientation)[2]
 
-        image_conf = get_image_config()
+        img_conf = get_image_config()
         img_arr = convertRobotImageToArr(
-            rgb_img, int(image_conf["height"]), int(image_conf["width"])
+            rgb_img, int(img_conf["height"]), int(img_conf["width"])
         )
 
         servo_points = servo(img_arr)
-        # error_str = (
-        #     str(get_error_mag(get_error_vec(servo_points)))
-        #     if servo_points
-        #     else "undefined"
-        # )
-        # save_with_error(img_arr, f"./img/rgbimage_{i}.png", error_str)
-
-        save_rgb_image(img_arr, f"./img/rgbimage_{i}.png")
+        save_image(servo_points, i, img_arr)
 
         if not servo_points:
-            print("No aruco marker detected, rotating")
+            print("no aruco marker detected, rotating")
             robot_orientation[2] += np.pi / 18
             continue
 
@@ -225,13 +252,9 @@ def main() -> None:
         velocity = get_velocity(points=servo_points)
         transform = get_transformation_matrix(robot_pos, robot_orientation)
 
-        del_pos = np.matmul(transform, [*velocity[:3], 1])
-        for i in range(3):
-            robot_pos[i] += (del_pos[i] / del_pos[-1]) * dt
-
-        del_orn = np.matmul(transform, [*velocity[3:], 1])
-        for i in range(3):
-            robot_orientation[i] += (del_orn[i] / del_orn[-1]) * (180 / np.pi) * dt
+        robot_pos, robot_orientation = update_pos_and_orn(
+            transform, velocity, robot_pos, robot_orientation, dt
+        )
 
         sleep(0.01)
 

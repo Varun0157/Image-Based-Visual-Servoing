@@ -35,7 +35,7 @@ def mark_center(img_arr: np.ndarray, points: List[List[int]]) -> None:
     )
 
 
-def servo(img_arr: np.ndarray) -> Union[List[List[int]], None]:
+def servo(img_arr: np.ndarray) -> Union[List[List[float]], None]:
     marker_corners, marker_ids = get_markers(img_arr)
     if not marker_corners:
         return None
@@ -48,9 +48,17 @@ def servo(img_arr: np.ndarray) -> Union[List[List[int]], None]:
     corners = corners.reshape(4, 2)
     corners = corners.astype(int)
 
-    points = sorted(
-        [list(corner.ravel()) for corner in corners], key=lambda a: (a[1], a[0])
-    )
+    top_left = list(corners[0].ravel())
+    top_right = list(corners[1].ravel())
+    bottom_right = list(corners[2].ravel())
+    bottom_left = list(corners[3].ravel())
+
+    points = [top_left, top_right, bottom_left, bottom_right]
+    points.sort()
+    if points[0][1] > points[1][1]:
+        points[0][1], points[1][1] = points[1][1], points[0][1]
+    if points[2][1] > points[3][1]:
+        points[2][1], points[3][1] = points[3][1], points[2][1]
 
     # mark_center(img_arr, points)
 
