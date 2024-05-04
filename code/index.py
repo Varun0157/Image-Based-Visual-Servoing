@@ -7,7 +7,7 @@ from typing import Tuple, Union, Dict, List
 
 import numpy as np
 
-from robot_image import convertRobotImageToArr, save_rgb_image
+from robot_image import convertRobotImageToArr, save_rgb_image, save_with_error
 from servo import servo
 from robot_motion import get_error_mag, get_error_vec, get_velocity
 
@@ -49,7 +49,7 @@ def init_scene(robot_pos: list[int]) -> Tuple[int, List[int]]:
     base_orn = p.getQuaternionFromEuler([0, 0, 0])
     obstacles = []
     for z_offset in [0, 1]:
-        for y_offset in [15]:
+        for y_offset in [10]:
             for x_offset in [0, -1, 1]:
                 obstacles.append(
                     p.loadURDF(
@@ -157,7 +157,7 @@ def capture_camera_image(
     return img_details
 
 
-REQ_ERROR = 5000
+REQ_ERROR = 200
 MIN_ERROR = float("inf")
 
 
@@ -174,7 +174,7 @@ def update_error(servo_points: List[List[int]], i: int | None = None) -> None:
     else:
         print(f"increase in error: {error - MIN_ERROR}")
 
-    if error < REQ_ERROR:
+    if error < REQ_ERROR or error > 1.5 * MIN_ERROR:
         print("DONE")
         p.disconnect()
         sys.exit(0)
@@ -186,7 +186,7 @@ def main() -> None:
 
     # initialise the robot
     robot_pos = [0, 0, 1]
-    robot_orientation = [0, 0, 0 - (2 * np.pi / 3)]
+    robot_orientation = [0, 0, 0.0 - np.pi * 2 / 3]
 
     plane_id, obstacles = init_scene(robot_pos)
     # taking [0, 5, 0] as the obstacle with the qrcode
@@ -205,9 +205,16 @@ def main() -> None:
             rgb_img, int(image_conf["height"]), int(image_conf["width"])
         )
 
+        servo_points = servo(img_arr)
+        # error_str = (
+        #     str(get_error_mag(get_error_vec(servo_points)))
+        #     if servo_points
+        #     else "undefined"
+        # )
+        # save_with_error(img_arr, f"./img/rgbimage_{i}.png", error_str)
+
         save_rgb_image(img_arr, f"./img/rgbimage_{i}.png")
 
-        servo_points = servo(img_arr)
         if not servo_points:
             print("No aruco marker detected, rotating")
             robot_orientation[2] += np.pi / 18
@@ -220,11 +227,11 @@ def main() -> None:
 
         del_pos = np.matmul(transform, [*velocity[:3], 1])
         for i in range(3):
-            robot_pos[i] += del_pos[i] / del_pos[-1] * dt
+            robot_pos[i] += (del_pos[i] / del_pos[-1]) * dt
 
         del_orn = np.matmul(transform, [*velocity[3:], 1])
         for i in range(3):
-            robot_orientation[i] += del_orn[i] / del_orn[-1] * dt
+            robot_orientation[i] += (del_orn[i] / del_orn[-1]) * (180 / np.pi) * dt
 
         sleep(0.01)
 
