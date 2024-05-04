@@ -11,7 +11,7 @@ from robot_image import convertRobotImageToArr, save_rgb_image
 from servo import servo
 from robot_motion import get_error_mag, get_error_vec, get_velocity
 
-MAX_ITERATIONS = int(1e4)
+MAX_ITERATIONS = int(1e3)
 
 
 def initPyBullet() -> int:
@@ -109,19 +109,20 @@ def get_transformation_matrix(
     robot_pos: List[int], robot_orientation: List[float]
 ) -> np.ndarray:
     # creating the transformation matrix
-    #       [R R R -Tx]
-    #       [R R R -Ty]
-    #       [R R R -Tz]
-    #       [0 0 0  1 ]
     robot_rotation_matrix = get_robot_rotation_matrix(robot_orientation)
-    transform = np.zeros((4, 4))
+    R_i = np.zeros((4, 4))
     for i in range(3):
         for j in range(3):
-            transform[i][j] = robot_rotation_matrix[i][j]
-    for i, val in enumerate([-robot_pos[0], -robot_pos[1], -robot_pos[2], 1]):
-        transform[i][3] = val
-    # print(transform)
+            R_i[i][j] = robot_rotation_matrix[i][j]
+    R_i[3][3] = 1
 
+    T_c = np.zeros((4, 4))
+    for i, val in enumerate([-robot_pos[0], -robot_pos[1], -robot_pos[2], 1]):
+        T_c[i][3] = val
+        T_c[i][i] = 1
+    transform = np.matmul(R_i, T_c)
+
+    # print(transform)
     return transform
 
 
@@ -144,7 +145,7 @@ def capture_camera_image(
     # calculating the projection matrix
     projection_matrix = get_projection_matrix()
 
-    # capturinng the image
+    # capturing the image
     image_conf = get_image_config()
     img_details = p.getCameraImage(
         image_conf["width"],
@@ -159,12 +160,14 @@ REQ_ERROR = 420
 MIN_ERROR = float("inf")
 
 
-def update_error(servo_points: List[List[int]]) -> None:
+def update_error(servo_points: List[List[int]], i: int | None = None) -> None:
     global REQ_ERROR, MIN_ERROR
 
     error = get_error_mag(get_error_vec(servo_points))
     if error < MIN_ERROR:
         MIN_ERROR = error
+        if i is not None:
+            print(f"{i}:", end="")
         print(f"new min error: {MIN_ERROR}")
     if error < REQ_ERROR:
         print("DONE")
@@ -197,7 +200,7 @@ def main() -> None:
             rgb_img, int(image_conf["height"]), int(image_conf["width"])
         )
 
-        save_rgb_image(img_arr, f"./rgbimage_{i}.png")
+        save_rgb_image(img_arr, f"./img/rgbimage_{i}.png")
 
         servo_points = servo(img_arr)
         if not servo_points:
@@ -205,18 +208,19 @@ def main() -> None:
             robot_orientation[2] += np.pi / 18
             continue
 
-        update_error(servo_points=servo_points)
+        update_error(servo_points=servo_points, i=i)
 
         velocity = get_velocity(points=servo_points)
-        transform = get_transformation_matrix(robot_pos, robot_orientation)
+        print(velocity)
+        # transform = get_transformation_matrix(robot_pos, robot_orientation)
 
-        del_pos = np.matmul(transform, [*velocity[:3], 1])
-        for i in range(3):
-            robot_pos[i] += del_pos[i] * dt
+        # del_pos = np.matmul(transform, [*velocity[:3], 1])
+        # for i in range(3):
+        #     robot_pos[i] += del_pos[i] / del_pos[-1] * dt
 
-        del_orn = np.matmul(transform, [*velocity[3:], 1])
-        for i in range(3):
-            robot_orientation[i] += del_orn[i] * dt
+        # del_orn = np.matmul(transform, [*velocity[3:], 1])
+        # for i in range(3):
+        #     robot_orientation[i] += del_orn[i] / del_orn[-1] * dt
 
         sleep(0.01)
 

@@ -53,11 +53,11 @@ def servo(img_arr: np.ndarray) -> Union[List[List[int]], None]:
     bottom_left = list(corners[3].ravel())
 
     points = [top_left, top_right, bottom_right, bottom_left]
-    # points.sort()
-    # if points[0][1] > points[1][1]:
-    #     points[0][1], points[1][1] = points[1][1], points[0][1]
-    # if points[2][1] > points[3][1]:
-    #     points[2][1], points[3][1] = points[3][1], points[2][1]
+    points.sort()
+    if points[0][1] > points[1][1]:
+        points[0][1], points[1][1] = points[1][1], points[0][1]
+    if points[2][1] > points[3][1]:
+        points[2][1], points[3][1] = points[3][1], points[2][1]
 
     # mark_center(img_arr, points)
 

@@ -9,12 +9,12 @@ requiredPos = None
 
 def getRequiredPos() -> List[List[int]]:
     global requiredPos
+    
     if requiredPos is None:
         frame = cv.imread("target.png")
         requiredPos = servo(frame)
         print(requiredPos)
-
-    assert requiredPos is not None, "no Aruco marker found in the goal image"
+        assert requiredPos is not None, "no Aruco marker found in the goal image"
     return requiredPos
 
 
@@ -41,10 +41,10 @@ def get_velocity(points: List[List[int]]) -> np.ndarray:
 def get_error_vec(points: List[List[int]]) -> np.ndarray:
     # create a get_score that takes a points list, final error is difference between both in 6 dof
 
-    # randomly acquire a length 3 list of indexes in range(4)
-    indices = [0, 1, 2]  # consider randomising later
+    # consider randomly acquire a length 3 list of indexes in range(4)
+    indices = [0, 1, 2]
     reqPos = getRequiredPos()
-    error = np.array([reqPos[i][j] - points[i][j] for i in indices for j in range(2)])
+    error = np.array([points[i][j] - reqPos[i][j] for i in indices for j in range(2)])
     return error
 
 
