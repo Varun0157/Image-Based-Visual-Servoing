@@ -47,7 +47,7 @@ def get_error_vec(points: List[List[int]]) -> np.ndarray:
     error = np.array(
         [
             points[indices[i]][j] - reqPos[indices[i]][j]
-            for i in range(2)
+            for i in range(3)
             for j in range(2)
         ]
     )
