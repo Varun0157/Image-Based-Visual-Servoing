@@ -17,31 +17,17 @@ def get_markers(img_arr: np.ndarray) -> Tuple[Union[List, None], List]:
     return marker_corners, marker_ids
 
 
-def mark_center(img_arr: np.ndarray, points: List[List[int]]) -> np.ndarray:
-    center = [
-        int(round(sum([point[0] for point in points]) / len(points))),
-        int(round(sum([point[1] for point in points]) / len(points))),
-    ]
-
-    # TODO: figure out this func
-    # cv.putText(
-    #     img_arr,
-    #     f"center",
-    #     center,
-    #     cv.FONT_HERSHEY_SIMPLEX,
-    #     1.3,
-    #     (200, 100, 0),
-    #     2,
-    #     cv.LINE_AA,
-    # )
+def mark_corners(img_arr: np.ndarray, points: List[List[int]]) -> np.ndarray:
+    for point in points:
+        cv.circle(img_arr, tuple(point), 5, (255, 255, 255), 3)
 
     return img_arr
 
 
-def servo(img_arr: np.ndarray) -> Tuple[Union[List[List[float]], None], np.ndarray]:
+def servo(img_arr: np.ndarray) -> Union[List[List[float]], None]:
     marker_corners, marker_ids = get_markers(img_arr)
     if not marker_corners:
-        return None, img_arr
+        return None
 
     corners, ids = marker_corners[0], marker_ids[0]
     cv.polylines(
@@ -63,6 +49,4 @@ def servo(img_arr: np.ndarray) -> Tuple[Union[List[List[float]], None], np.ndarr
     if points[2][1] > points[3][1]:
         points[2][1], points[3][1] = points[3][1], points[2][1]
 
-    img_arr = mark_center(img_arr, points)
-
-    return points, img_arr
+    return points

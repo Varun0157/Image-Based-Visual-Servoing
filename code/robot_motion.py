@@ -12,7 +12,7 @@ def getRequiredPos() -> List[List[float]]:
 
     if requiredPos is None:
         frame = cv.imread("target.png")
-        requiredPos, _ = servo(frame)
+        requiredPos = servo(frame)
         print(requiredPos)
         assert requiredPos is not None, "no Aruco marker found in the goal image"
     return requiredPos

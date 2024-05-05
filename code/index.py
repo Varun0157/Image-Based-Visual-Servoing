@@ -3,12 +3,12 @@ import pybullet as p
 import pybullet_data
 
 from time import sleep
-from typing import Tuple, Union, Dict, List
+from typing import Tuple, List
 
 import numpy as np
 
 from robot_image import convertRobotImageToArr, save_with_error, get_image_config
-from servo import servo
+from servo import servo, mark_corners
 from robot_motion import get_error_mag, get_error_vec, get_velocity
 
 MAX_ITERATIONS = int(1e3)
@@ -20,7 +20,7 @@ def initPyBullet() -> int:
     """
     pClient = p.connect(p.DIRECT)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
-    p.setGravity(0, 0, -1000)  # setting it to -1000 to make the obstacles fall faster
+    p.setGravity(0, 0, -10)
     # p.setRealTimeSimulation(True)
 
     return pClient
@@ -256,7 +256,9 @@ def main() -> None:
             img[2], int(img_conf["height"]), int(img_conf["width"])
         )
 
-        servo_points, rgb_img_arr = servo(rgb_img_arr)
+        servo_points = servo(rgb_img_arr)
+        # img_arr = mark_corners(img_arr, points) # uncomment this line to mark the corners of the aruco marker
+
         if not servo_points:
             error = None
             save_image(error, i, rgb_img_arr)
