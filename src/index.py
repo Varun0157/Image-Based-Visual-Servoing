@@ -211,7 +211,7 @@ def update_error(error_mag: float, i: int | None = None) -> None:
 
     if error_mag > (1 + ERROR_GROWTH_LIMIT) * MIN_ERROR:
         # indicator of some divergence
-        print("DONE")
+        print("DONE: error growth limit reached")
         p.disconnect()
         sys.exit(0)
 

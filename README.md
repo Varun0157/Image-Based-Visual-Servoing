@@ -15,4 +15,6 @@ python index.py
 bash create_vid.sh
 ```
 
-various factors can be altered in the `src/index.py` file, such as 
+### TODO
+- [ ] experiment with more complex dof. Currently simply taking the first three points' (x, y) coords as our 6 dof. 
+- [ ] find out why the obstacles fall slowly in the p.DIRECT sim even though it does not seem to happen in p.GUI. 
