@@ -7,7 +7,7 @@ from typing import Tuple, Union, Dict, List
 
 import numpy as np
 
-from robot_image import convertRobotImageToArr, save_with_error
+from robot_image import convertRobotImageToArr, save_with_error, get_image_config
 from servo import servo
 from robot_motion import get_error_mag, get_error_vec, get_velocity
 
@@ -15,6 +15,9 @@ MAX_ITERATIONS = int(1e3)
 
 
 def initPyBullet() -> int:
+    """
+    initialises the pybullet scene
+    """
     pClient = p.connect(p.DIRECT)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
     p.setGravity(0, 0, -1000)  # setting it to -1000 to make the obstacles fall faster
@@ -23,26 +26,19 @@ def initPyBullet() -> int:
     return pClient
 
 
-def get_image_config() -> Dict[str, Union[int, float]]:
-    WIDTH = 800
-    HEIGHT = 500
-    FOV = 90
-    NEAR_VAL = 0.01
-    FAR_VAL = 100
-
-    # make this functional, returning a bunch of gets
-    # also consider moving it to robot_image
-    return {
-        "width": WIDTH,
-        "height": HEIGHT,
-        "fov": FOV,
-        "near_val": NEAR_VAL,
-        "far_val": FAR_VAL,
-        "aspect": WIDTH / HEIGHT,
-    }
+def set_aruco_marker_texture(obstacle_id: int) -> None:
+    """
+    sets the aruco marker texture on the obstacle
+    """
+    texture_id = p.loadTexture("aruco_marker.png")
+    p.changeVisualShape(obstacle_id, -1, textureUniqueId=texture_id)
 
 
 def init_scene(robot_pos: list[float]) -> Tuple[int, List[int]]:
+    """
+    initialises the scene and returns created objects
+    """
+
     plane_id = p.loadURDF("plane.urdf")
     # loading obstacles, with the main cube at the first index
     base = robot_pos  # for now
@@ -70,12 +66,10 @@ def init_scene(robot_pos: list[float]) -> Tuple[int, List[int]]:
     return plane_id, obstacles
 
 
-def set_aruco_marker_texture(obstacle_id: int) -> None:
-    texture_id = p.loadTexture("aruco_marker.png")
-    p.changeVisualShape(obstacle_id, -1, textureUniqueId=texture_id)
-
-
 def get_robot_rotation_matrix(robot_orientation: List[float]) -> np.ndarray:
+    """
+    gets the robot rotation matrix on the basis of the orientation
+    """
     robot_rotation_matrix = p.getMatrixFromQuaternion(
         p.getQuaternionFromEuler(robot_orientation)
     )
@@ -88,12 +82,18 @@ def get_view_matrix(
     robot_pos: List[float],
     robot_rotation_matrix: np.ndarray,
 ) -> np.ndarray:
+    """
+    get the view matrix for the camera
+    """
     camera_vector = np.dot(robot_rotation_matrix, init_camera_vector)
     up_vector = np.dot(robot_rotation_matrix, init_up_vector)
     return p.computeViewMatrix(robot_pos, robot_pos + camera_vector, up_vector)
 
 
 def get_projection_matrix() -> np.ndarray:
+    """
+    get the projection matrix for the camera
+    """
     image_conf = get_image_config()
     return p.computeProjectionMatrixFOV(
         image_conf["fov"],
@@ -106,6 +106,9 @@ def get_projection_matrix() -> np.ndarray:
 def get_transformation_matrix(
     robot_pos: List[float], robot_rotation_matrix: np.ndarray
 ) -> np.ndarray:
+    """
+    create the transformation matrix to convert from image (world) coordinates to local camera coordinates
+    """
     # creating the transformation matrix
 
     # translate the camera to the robot position
@@ -129,6 +132,11 @@ def get_transformation_matrix(
 def capture_camera_image(
     robot_pos: List[float], robot_rotation_matrix: np.ndarray
 ) -> np.ndarray:
+    """
+    captures the image from the camera on the basis of the robot position and rotation matrix
+    """
+    image_conf = get_image_config()
+
     # robot rotation matrix
     # initial camera vectors
     init_camera_vector = (0, 1, 0)  # y axis
@@ -145,7 +153,6 @@ def capture_camera_image(
     projection_matrix = get_projection_matrix()
 
     # capturing the image
-    image_conf = get_image_config()
     img_details = p.getCameraImage(
         image_conf["width"],
         image_conf["height"],
@@ -156,10 +163,14 @@ def capture_camera_image(
 
 
 MIN_ERROR = float("inf")
-ERROR_GROWTH_LIMIT = 0.05
+ERROR_GROWTH_LIMIT = 0.05  # 5%
 
 
 def update_error(error_mag: float, i: int | None = None) -> None:
+    """
+    updates the global min error and determines when to break
+    """
+
     global MIN_ERROR
 
     if i is not None:
@@ -174,13 +185,16 @@ def update_error(error_mag: float, i: int | None = None) -> None:
             print(f"error remained same: {error_mag}")
 
     if error_mag > (1 + ERROR_GROWTH_LIMIT) * MIN_ERROR:
-        # sign of divergence
+        # indicator of some divergence
         print("DONE")
         p.disconnect()
         sys.exit(0)
 
 
 def save_image(error_mag: float | None, i: int, img_arr: np.ndarray) -> None:
+    """
+    saves the image with the error magnitude on it
+    """
     # create the img directory if it does not exist
     if not os.path.exists("img"):
         os.makedirs("img")
@@ -204,6 +218,10 @@ def update_pos_and_orn(
     robot_orn: List[float],
     dt: float,
 ) -> Tuple[List[float], List[float]]:
+    """
+    returns the updated position and orientation of the robot
+    uses homogenous coordinates
+    """
     del_pos = np.matmul(transform, [*velocity[:3], 1])
     for i in range(3):
         robot_pos[i] += (del_pos[i] / del_pos[-1]) * dt
@@ -217,6 +235,7 @@ def update_pos_and_orn(
 
 def main() -> None:
     _ = initPyBullet()
+    img_conf = get_image_config()
     dt: float = 0.0001
 
     # initialise the robot
@@ -233,21 +252,20 @@ def main() -> None:
 
         img = capture_camera_image(robot_pos, robot_rot_matrix)
 
-        img_conf = get_image_config()
-        img_arr = convertRobotImageToArr(
+        rgb_img_arr = convertRobotImageToArr(
             img[2], int(img_conf["height"]), int(img_conf["width"])
         )
 
-        servo_points, img_arr = servo(img_arr)
+        servo_points, rgb_img_arr = servo(rgb_img_arr)
         if not servo_points:
             error = None
-            save_image(error, i, img_arr)
+            save_image(error, i, rgb_img_arr)
             print("no aruco marker detected, rotating")
             robot_orientation[2] += np.pi / 18
             continue
 
         error = get_error_mag(get_error_vec(servo_points))
-        save_image(error, i, img_arr)
+        save_image(error, i, rgb_img_arr)
         update_error(error, i=i)
 
         velocity = get_velocity(points=servo_points, depth_buffer=img[3])

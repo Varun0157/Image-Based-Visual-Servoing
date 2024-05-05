@@ -1,6 +1,23 @@
 from PIL import Image, ImageDraw
 import numpy as np
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Union
+
+
+def get_image_config() -> Dict[str, Union[int, float]]:
+    WIDTH = 800
+    HEIGHT = 500
+    FOV = 90
+    NEAR_VAL = 0.01
+    FAR_VAL = 100
+
+    return {
+        "width": WIDTH,
+        "height": HEIGHT,
+        "fov": FOV,
+        "near_val": NEAR_VAL,
+        "far_val": FAR_VAL,
+        "aspect": WIDTH / HEIGHT,
+    }
 
 
 def convertRobotImageToArr(arr: List, h: int, w: int) -> np.ndarray:
