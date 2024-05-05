@@ -224,7 +224,7 @@ def main() -> None:
     img_conf = get_image_config()
     dt: float = 0.0001
 
-    # initialise the robot
+    # initialise the robot position and orientation (arbitrary)
     robot_pos = [0, 0, 1.0]
     robot_orientation = [0, 0, 0 - np.pi / 3]
 
@@ -233,7 +233,6 @@ def main() -> None:
     sleep(5)  # arbitrary sleep to let the scene load
     for i in range(MAX_ITERATIONS):
         p.stepSimulation()
-
         robot_rot_matrix = get_robot_rotation_matrix(robot_orientation)
 
         img = capture_camera_image(robot_pos, robot_rot_matrix)
@@ -251,11 +250,13 @@ def main() -> None:
             print("no aruco marker detected, rotating")
             robot_orientation[2] += np.pi / 18
             continue
-
+        
+        # get the error, save the image, update the minimum error
         error = get_error_mag(get_error_vec(servo_points))
         save_image(error, i, rgb_img_arr, MIN_ERROR)
         update_error(error, i=i)
 
+        # get the velocity, transform vector, and update position and orientation
         velocity = get_velocity(points=servo_points, depth_buffer=img[3])
         transform = get_transformation_matrix(robot_pos, robot_rot_matrix)
 
