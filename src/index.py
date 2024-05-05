@@ -33,7 +33,7 @@ def set_aruco_marker_texture(obstacle_id: int) -> None:
     """
     sets the aruco marker texture on the obstacle
     """
-    texture_id = p.loadTexture("aruco_marker.png")
+    texture_id = p.loadTexture("static/aruco_marker.png")
     p.changeVisualShape(obstacle_id, -1, textureUniqueId=texture_id)
 
 

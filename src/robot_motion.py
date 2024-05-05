@@ -19,7 +19,7 @@ def getRequiredPos() -> List[List[float]]:
     global required_pos
 
     if required_pos is None:
-        frame = imread("target.png")
+        frame = imread("static/target.png")
         required_pos = get_marker_corners(frame)
         print(f"required features: {required_pos}")
         assert required_pos is not None, "no Aruco marker found in the goal image"
