@@ -7,7 +7,7 @@ from typing import Tuple, Union, Dict, List
 
 import numpy as np
 
-from robot_image import convertRobotImageToArr, save_rgb_image, save_with_error
+from robot_image import convertRobotImageToArr, save_with_error
 from servo import servo
 from robot_motion import get_error_mag, get_error_vec, get_velocity
 
@@ -17,7 +17,7 @@ MAX_ITERATIONS = int(1e3)
 def initPyBullet() -> int:
     pClient = p.connect(p.DIRECT)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
-    p.setGravity(0, 0, -10)
+    p.setGravity(0, 0, -1000)  # setting it to -1000 to make the obstacles fall faster
     # p.setRealTimeSimulation(True)
 
     return pClient
@@ -107,6 +107,14 @@ def get_transformation_matrix(
     robot_pos: List[float], robot_orientation: List[float]
 ) -> np.ndarray:
     # creating the transformation matrix
+
+    # translate the camera to the robot position
+    T_c = np.zeros((4, 4))
+    for i, val in enumerate([-robot_pos[0], -robot_pos[1], -robot_pos[2], 1]):
+        T_c[i][3] = val
+        T_c[i][i] = 1
+
+    # rotate the camera to the robot orientation
     robot_rotation_matrix = get_robot_rotation_matrix(robot_orientation)
     R_i = np.zeros((4, 4))
     for i in range(3):
@@ -114,13 +122,8 @@ def get_transformation_matrix(
             R_i[i][j] = robot_rotation_matrix[i][j]
     R_i[3][3] = 1
 
-    T_c = np.zeros((4, 4))
-    for i, val in enumerate([-robot_pos[0], -robot_pos[1], -robot_pos[2], 1]):
-        T_c[i][3] = val
-        T_c[i][i] = 1
     transform = np.matmul(R_i, T_c)
 
-    # print(transform)
     return transform
 
 
@@ -155,42 +158,37 @@ def capture_camera_image(
 
 
 MIN_ERROR = float("inf")
-ERROR_GROWTH_LIMIT = 1.01
+ERROR_GROWTH_LIMIT = 0.05
 
 
-def update_error(servo_points: List[List[float]], i: int | None = None) -> None:
+def update_error(error_mag: float, i: int | None = None) -> None:
     global MIN_ERROR
-
-    error = get_error_mag(get_error_vec(servo_points))
 
     if i is not None:
         print(f"{i}:", end="")
-    if error < MIN_ERROR:
-        MIN_ERROR = error
+    if error_mag < MIN_ERROR:
+        MIN_ERROR = error_mag
         print(f"new min error: {MIN_ERROR}")
     else:
-        if error > MIN_ERROR:
-            print(f"increase from min: {error - MIN_ERROR}")
+        if error_mag > MIN_ERROR:
+            print(f"increase from min: {error_mag - MIN_ERROR}")
         else:
-            print(f"error remained same: {error}")
+            print(f"error remained same: {error_mag}")
 
-    if error > ERROR_GROWTH_LIMIT * MIN_ERROR:
+    if error_mag > (1 + ERROR_GROWTH_LIMIT) * MIN_ERROR:
         # sign of divergence
         print("DONE")
         p.disconnect()
         sys.exit(0)
 
 
-def save_image(
-    servo_points: List[List[float]] | None, i: int, img_arr: np.ndarray
-) -> None:
+def save_image(error_mag: float | None, i: int, img_arr: np.ndarray) -> None:
     # create the img directory if it does not exist
     if not os.path.exists("img"):
         os.makedirs("img")
 
     global MIN_ERROR
 
-    error_mag = get_error_mag(get_error_vec(servo_points)) if servo_points else None
     error_str = f"{error_mag:.2f}" if error_mag else "undefined"
 
     save_with_error(
@@ -240,15 +238,18 @@ def main() -> None:
             img[2], int(img_conf["height"]), int(img_conf["width"])
         )
 
-        servo_points = servo(img_arr)
-        save_image(servo_points, i, img_arr)
+        servo_points, img_arr = servo(img_arr)
 
         if not servo_points:
+            error = None
+            save_image(error, i, img_arr)
             print("no aruco marker detected, rotating")
             robot_orientation[2] += np.pi / 18
             continue
 
-        update_error(servo_points=servo_points, i=i)
+        error = get_error_mag(get_error_vec(servo_points))
+        save_image(error, i, img_arr)
+        update_error(error, i=i)
 
         velocity = get_velocity(points=servo_points, depth_buffer=img[3])
         transform = get_transformation_matrix(robot_pos, robot_orientation)
