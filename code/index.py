@@ -1,14 +1,17 @@
-import sys, os
-import pybullet as p
-import pybullet_data
+"""
+main IBVS module 
+"""
 
+import pybullet as p, pybullet_data
+
+import sys
 from time import sleep
 from typing import Tuple, List
 
 import numpy as np
 
-from robot_image import convertRobotImageToArr, save_with_error, get_image_config
-from servo import servo, mark_corners
+from robot_image import convert_img_to_arr, save_image, get_image_config
+from servo import get_marker_corners, mark_corners
 from robot_motion import get_error_mag, get_error_vec, get_velocity
 
 MAX_ITERATIONS = int(1e3)
@@ -162,6 +165,28 @@ def capture_camera_image(
     return img_details
 
 
+def update_pos_and_orn(
+    transform: np.ndarray,
+    velocity: np.ndarray,
+    robot_pos: List[float],
+    robot_orn: List[float],
+    dt: float,
+) -> Tuple[List[float], List[float]]:
+    """
+    returns the updated position and orientation of the robot
+    uses homogenous coordinates
+    """
+    del_pos = np.matmul(transform, [*velocity[:3], 1])
+    for i in range(3):
+        robot_pos[i] += (del_pos[i] / del_pos[-1]) * dt
+
+    del_orn = np.matmul(transform, [*velocity[3:], 1])
+    for i in range(3):
+        robot_orn[i] += (del_orn[i] / del_orn[-1]) * dt
+
+    return robot_pos, robot_orn
+
+
 MIN_ERROR = float("inf")
 ERROR_GROWTH_LIMIT = 0.05  # 5%
 
@@ -191,49 +216,10 @@ def update_error(error_mag: float, i: int | None = None) -> None:
         sys.exit(0)
 
 
-def save_image(error_mag: float | None, i: int, img_arr: np.ndarray) -> None:
-    """
-    saves the image with the error magnitude on it
-    """
-    # create the img directory if it does not exist
-    if not os.path.exists("img"):
-        os.makedirs("img")
-
-    global MIN_ERROR
-
-    error_str = f"{error_mag:.2f}" if error_mag else "undefined"
-
-    save_with_error(
-        img_arr,
-        f"./img/rgbimage_{i}.png",
-        error_str,
-        "green" if (error_mag and error_mag <= MIN_ERROR) else "red",
-    )
-
-
-def update_pos_and_orn(
-    transform: np.ndarray,
-    velocity: np.ndarray,
-    robot_pos: List[float],
-    robot_orn: List[float],
-    dt: float,
-) -> Tuple[List[float], List[float]]:
-    """
-    returns the updated position and orientation of the robot
-    uses homogenous coordinates
-    """
-    del_pos = np.matmul(transform, [*velocity[:3], 1])
-    for i in range(3):
-        robot_pos[i] += (del_pos[i] / del_pos[-1]) * dt
-
-    del_orn = np.matmul(transform, [*velocity[3:], 1])
-    for i in range(3):
-        robot_orn[i] += (del_orn[i] / del_orn[-1]) * dt
-
-    return robot_pos, robot_orn
-
-
 def main() -> None:
+    """
+    the main flow
+    """
     _ = initPyBullet()
     img_conf = get_image_config()
     dt: float = 0.0001
@@ -244,7 +230,7 @@ def main() -> None:
 
     plane_id, obstacles = init_scene(robot_pos)
 
-    sleep(5)
+    sleep(5)  # arbitrary sleep to let the scene load
     for i in range(MAX_ITERATIONS):
         p.stepSimulation()
 
@@ -252,22 +238,22 @@ def main() -> None:
 
         img = capture_camera_image(robot_pos, robot_rot_matrix)
 
-        rgb_img_arr = convertRobotImageToArr(
+        rgb_img_arr = convert_img_to_arr(
             img[2], int(img_conf["height"]), int(img_conf["width"])
         )
 
-        servo_points = servo(rgb_img_arr)
+        servo_points = get_marker_corners(rgb_img_arr)
         # img_arr = mark_corners(img_arr, points) # uncomment this line to mark the corners of the aruco marker
 
         if not servo_points:
             error = None
-            save_image(error, i, rgb_img_arr)
+            save_image(error, i, rgb_img_arr, MIN_ERROR)
             print("no aruco marker detected, rotating")
             robot_orientation[2] += np.pi / 18
             continue
 
         error = get_error_mag(get_error_vec(servo_points))
-        save_image(error, i, rgb_img_arr)
+        save_image(error, i, rgb_img_arr, MIN_ERROR)
         update_error(error, i=i)
 
         velocity = get_velocity(points=servo_points, depth_buffer=img[3])
@@ -277,7 +263,7 @@ def main() -> None:
             transform, velocity, robot_pos, robot_orientation, dt
         )
 
-        sleep(0.01)
+        sleep(0.01)  # arbitrary sleep to let the changes take place
 
 
 if __name__ == "__main__":

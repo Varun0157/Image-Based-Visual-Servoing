@@ -1,6 +1,12 @@
+"""
+general facade for PIL, all major local image stores and edits are done here 
+"""
+
+import os
+from typing import List, Tuple, Dict, Union
+
 from PIL import Image, ImageDraw
 import numpy as np
-from typing import List, Tuple, Dict, Union
 
 
 def get_image_config() -> Dict[str, Union[int, float]]:
@@ -24,7 +30,7 @@ def get_image_config() -> Dict[str, Union[int, float]]:
     }
 
 
-def convertRobotImageToArr(arr: List, h: int, w: int) -> np.ndarray:
+def convert_img_to_arr(arr: List, h: int, w: int) -> np.ndarray:
     """
     converts the robot image into a numpy array
     """
@@ -69,3 +75,25 @@ def save_with_error(
     """
     save_rgb_image(img_arr, img_path)
     write_text_to_image(img_path, f"error: {error}", (10, 10), color)
+
+
+def save_image(
+    error_mag: float | None, i: int, img_arr: np.ndarray, min_error: float
+) -> None:
+    """
+    saves the image with the error magnitude on it
+    """
+    # create the img directory if it does not exist
+    if not os.path.exists("img"):
+        os.makedirs("img")
+
+    global MIN_ERROR
+
+    error_str = f"{error_mag:.2f}" if error_mag else "undefined"
+
+    save_with_error(
+        img_arr,
+        f"./img/rgbimage_{i}.png",
+        error_str,
+        "green" if (error_mag and error_mag <= min_error) else "red",
+    )
