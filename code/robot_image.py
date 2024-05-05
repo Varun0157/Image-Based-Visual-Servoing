@@ -4,6 +4,10 @@ from typing import List, Tuple, Dict, Union
 
 
 def get_image_config() -> Dict[str, Union[int, float]]:
+    """
+    returns the image configuration
+    """
+
     WIDTH = 800
     HEIGHT = 500
     FOV = 90
@@ -21,6 +25,9 @@ def get_image_config() -> Dict[str, Union[int, float]]:
 
 
 def convertRobotImageToArr(arr: List, h: int, w: int) -> np.ndarray:
+    """
+    converts the robot image into a numpy array
+    """
     pixels = []
     for x in range(h):
         for y in range(w):
@@ -35,6 +42,9 @@ def convertRobotImageToArr(arr: List, h: int, w: int) -> np.ndarray:
 def write_text_to_image(
     img_path: str, text: str, xy: Tuple[int, int], color: str
 ) -> None:
+    """
+    writes any given text to an image
+    """
     img = Image.open(img_path)
 
     draw = ImageDraw.Draw(img)
@@ -44,6 +54,9 @@ def write_text_to_image(
 
 
 def save_rgb_image(img_arr: np.ndarray, img_path: str) -> None:
+    """
+    saves an rgb image to a given path
+    """
     img = Image.fromarray(img_arr)
     img.save(img_path)
 
@@ -51,5 +64,8 @@ def save_rgb_image(img_arr: np.ndarray, img_path: str) -> None:
 def save_with_error(
     img_arr: np.ndarray, img_path: str, error: str, color: str = "black"
 ) -> None:
+    """
+    saves the image with the error text
+    """
     save_rgb_image(img_arr, img_path)
     write_text_to_image(img_path, f"error: {error}", (10, 10), color)
