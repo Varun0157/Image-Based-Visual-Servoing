@@ -104,7 +104,7 @@ def get_projection_matrix() -> np.ndarray:
 
 
 def get_transformation_matrix(
-    robot_pos: List[float], robot_orientation: List[float]
+    robot_pos: List[float], robot_rotation_matrix: np.ndarray
 ) -> np.ndarray:
     # creating the transformation matrix
 
@@ -115,7 +115,6 @@ def get_transformation_matrix(
         T_c[i][i] = 1
 
     # rotate the camera to the robot orientation
-    robot_rotation_matrix = get_robot_rotation_matrix(robot_orientation)
     R_i = np.zeros((4, 4))
     for i in range(3):
         for j in range(3):
@@ -128,8 +127,7 @@ def get_transformation_matrix(
 
 
 def capture_camera_image(
-    robot_pos: List[float],
-    robot_orientation: List[float],
+    robot_pos: List[float], robot_rotation_matrix: np.ndarray
 ) -> np.ndarray:
     # robot rotation matrix
     # initial camera vectors
@@ -141,7 +139,7 @@ def capture_camera_image(
         init_camera_vector,
         init_up_vector,
         robot_pos,
-        get_robot_rotation_matrix(robot_orientation),
+        robot_rotation_matrix,
     )
     # calculating the projection matrix
     projection_matrix = get_projection_matrix()
@@ -231,7 +229,9 @@ def main() -> None:
     for i in range(MAX_ITERATIONS):
         p.stepSimulation()
 
-        img = capture_camera_image(robot_pos, robot_orientation)
+        robot_rot_matrix = get_robot_rotation_matrix(robot_orientation)
+
+        img = capture_camera_image(robot_pos, robot_rot_matrix)
 
         img_conf = get_image_config()
         img_arr = convertRobotImageToArr(
@@ -239,7 +239,6 @@ def main() -> None:
         )
 
         servo_points, img_arr = servo(img_arr)
-
         if not servo_points:
             error = None
             save_image(error, i, img_arr)
@@ -252,7 +251,7 @@ def main() -> None:
         update_error(error, i=i)
 
         velocity = get_velocity(points=servo_points, depth_buffer=img[3])
-        transform = get_transformation_matrix(robot_pos, robot_orientation)
+        transform = get_transformation_matrix(robot_pos, robot_rot_matrix)
 
         robot_pos, robot_orientation = update_pos_and_orn(
             transform, velocity, robot_pos, robot_orientation, dt
