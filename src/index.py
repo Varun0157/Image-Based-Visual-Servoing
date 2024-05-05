@@ -10,9 +10,9 @@ from typing import Tuple, List
 
 import numpy as np
 
-from src.image import convert_img_to_arr, save_image, get_image_config
+from image import convert_img_to_arr, save_image, get_image_config
 from servo import get_marker_corners, mark_corners
-from src.motion import get_error_mag, get_error_vec, get_velocity
+from motion import get_error_mag, get_error_vec, get_velocity
 
 MAX_ITERATIONS = int(1e3)
 
