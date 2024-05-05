@@ -1,5 +1,4 @@
-code/img
-code/__tmp
-code/__pycache__
-code/miniconda3
-
+src/img
+src/__tmp
+src/__pycache__
+src/miniconda3
