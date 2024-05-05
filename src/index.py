@@ -1,12 +1,13 @@
 """
-main IBVS module 
+main IBVS module
 """
-
-import pybullet as p, pybullet_data
 
 import sys
 from time import sleep
 from typing import Tuple, List
+
+import pybullet as p
+import pybullet_data
 
 import numpy as np
 
@@ -17,16 +18,16 @@ from motion import get_error_mag, get_error_vec, get_velocity
 MAX_ITERATIONS = int(1e3)
 
 
-def initPyBullet() -> int:
+def init_pybullet() -> int:
     """
     initialises the pybullet scene
     """
-    pClient = p.connect(p.DIRECT)
+    pclient = p.connect(p.DIRECT)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
     p.setGravity(0, 0, -10)
     # p.setRealTimeSimulation(True)
 
-    return pClient
+    return pclient
 
 
 def set_aruco_marker_texture(obstacle_id: int) -> None:
@@ -110,24 +111,25 @@ def get_transformation_matrix(
     robot_pos: List[float], robot_rotation_matrix: np.ndarray
 ) -> np.ndarray:
     """
-    create the transformation matrix to convert from image (world) coordinates to local camera coordinates
+    create the transformation matrix to convert from image (world) coordinates to local
+        camera coordinates
     """
     # creating the transformation matrix
 
     # translate the camera to the robot position
-    T_c = np.zeros((4, 4))
+    t_c = np.zeros((4, 4))
     for i, val in enumerate([-robot_pos[0], -robot_pos[1], -robot_pos[2], 1]):
-        T_c[i][3] = val
-        T_c[i][i] = 1
+        t_c[i][3] = val
+        t_c[i][i] = 1
 
     # rotate the camera to the robot orientation
-    R_i = np.zeros((4, 4))
+    r_i = np.zeros((4, 4))
     for i in range(3):
         for j in range(3):
-            R_i[i][j] = robot_rotation_matrix[i][j]
-    R_i[3][3] = 1
+            r_i[i][j] = robot_rotation_matrix[i][j]
+    r_i[3][3] = 1
 
-    transform = np.matmul(R_i, T_c)
+    transform = np.matmul(r_i, t_c)
 
     return transform
 
@@ -220,7 +222,7 @@ def main() -> None:
     """
     the main flow
     """
-    _ = initPyBullet()
+    _ = init_pybullet()
     img_conf = get_image_config()
     dt: float = 0.0001
 
@@ -228,7 +230,7 @@ def main() -> None:
     robot_pos = [0, 0, 1.0]
     robot_orientation = [0, 0, 0 - np.pi / 3]
 
-    plane_id, obstacles = init_scene(robot_pos)
+    _plane_id, _obstacles = init_scene(robot_pos)
 
     sleep(5)  # arbitrary sleep to let the scene load
     for i in range(MAX_ITERATIONS):
@@ -242,7 +244,7 @@ def main() -> None:
         )
 
         servo_points = get_marker_corners(rgb_img_arr)
-        # img_arr = mark_corners(img_arr, points) # uncomment this line to mark the corners of the aruco marker
+        # img_arr = mark_corners(img_arr, points) # uncomment this line to mark corners of marker
 
         if not servo_points:
             error = None
@@ -250,7 +252,7 @@ def main() -> None:
             print("no aruco marker detected, rotating")
             robot_orientation[2] += np.pi / 18
             continue
-        
+
         # get the error, save the image, update the minimum error
         error = get_error_mag(get_error_vec(servo_points))
         save_image(error, i, rgb_img_arr, MIN_ERROR)
