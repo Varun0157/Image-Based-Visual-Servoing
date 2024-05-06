@@ -16,19 +16,10 @@ bash create_vid.sh
 ```
 
 #### Demo 
-<table>
-    <tr>
-        <td style="width:50%">
-            <img src="demo/target.png" alt="Target Image" style="width: 100%;">
-        </td>
-        <td style="width:50%">
-            <video style="width:100%" controls>
-                <source src="demo/output.mp4" type="video/mp4">
-                Your browser does not support the video tag.
-            </video>
-        </td>
-    </tr>
-</table>
+
+| ![Target Image](demo/target.png) | ![Output GIF](demo/output.gif) |
+|:---:|:---:|
+| Target Image | Output GIF |
 
 ### TODO
 - [ ] experiment with more complex dof. Currently simply taking the first three points' (x, y) coords as our 6 dof. 
