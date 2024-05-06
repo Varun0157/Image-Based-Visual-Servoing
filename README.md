@@ -15,6 +15,21 @@ python index.py
 bash create_vid.sh
 ```
 
+#### Demo 
+<table>
+  <tr>
+    <td>
+      <img src="demo/target.png" alt="Target Image" style="width: 80%;">
+    </td>
+    <td>
+      <video style="width:100%" controls>
+        <source src="demo/video.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+      </video>
+    </td>
+  </tr>
+</table>
+
 ### TODO
 - [ ] experiment with more complex dof. Currently simply taking the first three points' (x, y) coords as our 6 dof. 
 - [ ] find out why the obstacles fall slowly in the p.DIRECT sim even though it does not seem to happen in p.GUI. 
