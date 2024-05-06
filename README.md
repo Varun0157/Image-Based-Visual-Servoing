@@ -17,7 +17,7 @@ bash create_vid.sh
 
 #### Demo 
 
-| <img src="demo/target.png" width="800" /> | <img src="demo/output.gif" width="800" /> |
+| <img src="demo/target.png" width="700" /> | <img src="demo/output.gif" width="600" /> |
 |:---:|:---:|
 | Target Image | Output GIF |
 
