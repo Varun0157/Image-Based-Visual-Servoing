@@ -87,10 +87,7 @@ def save_image(
     if not os.path.exists("img"):
         os.makedirs("img")
 
-    global MIN_ERROR
-
     error_str = f"{error_mag:.2f}" if error_mag else "undefined"
-
     save_with_error(
         img_arr,
         f"./img/rgbimage_{i}.png",
