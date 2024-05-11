@@ -118,8 +118,8 @@ def get_transformation_matrix(
 
     # translate the camera to the robot position
     t_c = np.zeros((4, 4))
-    for i, val in enumerate([-robot_pos[0], -robot_pos[1], -robot_pos[2]]):
-        t_c[i][3] = val
+    for i, val in enumerate(robot_pos):
+        t_c[i][3] = -val
         t_c[i][i] = 1
     t_c[3][3] = 1
 
