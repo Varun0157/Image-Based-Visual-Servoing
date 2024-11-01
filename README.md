@@ -22,5 +22,6 @@ bash create_vid.sh
 | Target Image | Output GIF |
 
 ### TODO
+- [ ] port to `airobot` to get rid of view matrix complexity 
 - [ ] experiment with more complex dof. Currently simply taking the first three points' (x, y) coords as our 6 dof. 
 - [ ] find out why the obstacles fall slowly in the p.DIRECT sim even though it does not seem to happen in p.GUI. 
