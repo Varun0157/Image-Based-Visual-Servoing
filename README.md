@@ -2,13 +2,15 @@
 
 A simple IBVS simulation in `pybullet` built as a part of my undergraduate research.
 
+The initial code was built off of @roadrollerdafjorst's [IBVS sim](https://github.com/roadrollerdafjorst/visual-servoing/tree/main/IBVS) but has deviated since.
+
 ## Instructions
 
 - `docs/env.yml` contains the conda environment config file.
   Create an environment (here, called `ibvs`) and load it in as usual:
 
 ```bash
-cd src
+cd docs
 conda env create -f env.yml
 conda activate ibvs
 ```
@@ -34,7 +36,6 @@ bash create_vid.sh
 
 ## TODO
 
-- [ ] add some acknowledgements
 - [ ] port to `airobot` to get rid of view matrix complexity
 - [ ] use a better target and scene
 - [ ] experiment with more complex dof.
