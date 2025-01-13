@@ -1,6 +1,6 @@
 # Image Based Visual Servoing
 
-A simple IBVS simulation in `pybullet` built as a part of my undergraduate research.
+A simple IBVS simulation in `pybullet` built as a learning experiment as a part of my undergraduate research.
 
 The initial code was built off of @roadrollerdafjorst's [IBVS sim](https://github.com/roadrollerdafjorst/visual-servoing/tree/main/IBVS) but has deviated since.
 
