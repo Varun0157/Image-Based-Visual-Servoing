@@ -1,7 +1,7 @@
 #!/bin/bash
 
-input_dir="./code/img"
-output_dir="./code/vid"
+input_dir="./src/img"
+output_dir="./src/vid"
 
 mkdir -p "$output_dir"
 
