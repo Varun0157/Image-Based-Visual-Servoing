@@ -1,12 +1,10 @@
 """
-servoing module 
+servoing module
 """
 
 import numpy as np
 import cv2
 from typing import List, Union, Tuple
-
-# NOTE: this implementation of visual servoing uses Aruco markers, which is why we can simply use detectMarkers of the cv.aruco module
 
 
 def get_markers(img_arr: np.ndarray) -> Tuple[Union[List, None], List]:
@@ -17,7 +15,10 @@ def get_markers(img_arr: np.ndarray) -> Tuple[Union[List, None], List]:
     marker_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_1000)
     param_markers = cv2.aruco.DetectorParameters()
     detector = cv2.aruco.ArucoDetector(marker_dict, param_markers)
-    gray_frame = cv2.cvtColor(img_arr, cv2.COLOR_BGR2GRAY)
+
+    output_dist = cv2.COLOR_RGBA2GRAY if img_arr.shape[2] == 4 else cv2.COLOR_BGR2GRAY
+    gray_frame = cv2.cvtColor(img_arr, output_dist)
+
     marker_corners, marker_ids, _ = detector.detectMarkers(gray_frame)
 
     return marker_corners, marker_ids
