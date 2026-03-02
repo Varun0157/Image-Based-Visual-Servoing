@@ -36,8 +36,10 @@ bash create_vid.sh
 
 ## TODO
 
-- [ ] port to `airobot` to get rid of view matrix complexity
+- [ ] refactor: get rid of globals and replace with a config, remove hard-coded paths
+- [ ] add a scheduler for `LAMBDA`
 - [ ] use a better target and scene
 - [ ] experiment with more complex dof.
   - Currently simply taking the first three points' (x, y) coords as our 6 dof.
 - [ ] find out why the obstacles fall slowly in the p.DIRECT sim even though it does not seem to happen in p.GUI.
+- [ ] port to `airobot` to get rid of view matrix complexity
