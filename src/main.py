@@ -107,34 +107,6 @@ def get_projection_matrix() -> np.ndarray:
     )
 
 
-def get_transformation_matrix(
-    robot_pos: List[float], robot_rotation_matrix: np.ndarray
-) -> np.ndarray:
-    """
-    create the transformation matrix to convert from image (world) coordinates to local
-        camera coordinates
-    """
-    # creating the transformation matrix
-
-    # translate the camera to the robot position
-    t_c = np.zeros((4, 4))
-    for i, val in enumerate(robot_pos):
-        t_c[i][3] = -val
-        t_c[i][i] = 1
-    t_c[3][3] = 1
-
-    # rotate the camera to the robot orientation
-    r_i = np.zeros((4, 4))
-    for i in range(3):
-        for j in range(3):
-            r_i[i][j] = robot_rotation_matrix[i][j]
-    r_i[3][3] = 1
-
-    transform = np.matmul(r_i, t_c)
-
-    return transform
-
-
 def capture_camera_image(
     robot_pos: List[float], robot_rotation_matrix: np.ndarray
 ) -> np.ndarray:
@@ -169,23 +141,23 @@ def capture_camera_image(
 
 
 def update_pos_and_orn(
-    transform: np.ndarray,
+    R: np.ndarray,
     velocity: np.ndarray,
     robot_pos: List[float],
     robot_orn: List[float],
     dt: float,
 ) -> Tuple[List[float], List[float]]:
     """
-    returns the updated position and orientation of the robot
-    uses homogenous coordinates
+    returns the updated position and orientation of the robot.
+    velocity is in camera frame; R (camera-to-world rotation) maps it to world frame.
     """
-    del_pos = np.matmul(transform, [*velocity[:3], 1])
+    v_world = R @ velocity[:3]
     for i in range(3):
-        robot_pos[i] += (del_pos[i] / del_pos[-1]) * dt
+        robot_pos[i] += v_world[i] * dt
 
-    del_orn = np.matmul(transform, [*velocity[3:], 1])
+    w_world = R @ velocity[3:]
     for i in range(3):
-        robot_orn[i] += (del_orn[i] / del_orn[-1]) * dt
+        robot_orn[i] += w_world[i] * dt
 
     return robot_pos, robot_orn
 
@@ -259,12 +231,11 @@ def main() -> None:
         save_image(error, i, rgb_img_arr, MIN_ERROR)
         update_error(error, i=i)
 
-        # get the velocity, transform vector, and update position and orientation
+        # get the velocity and update position and orientation
         velocity = get_velocity(points=servo_points, depth_buffer=img[3])
-        transform = get_transformation_matrix(robot_pos, robot_rot_matrix)
 
         robot_pos, robot_orientation = update_pos_and_orn(
-            transform, velocity, robot_pos, robot_orientation, dt
+            robot_rot_matrix, velocity, robot_pos, robot_orientation, dt
         )
 
         sleep(0.01)  # arbitrary sleep to let the changes take place
