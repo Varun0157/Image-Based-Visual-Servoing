@@ -1,8 +1,9 @@
 """
-general facade for PIL, all major local image stores and edits are done here 
+general facade for PIL, all major local image stores and edits are done here
 """
 
 import os
+import glob
 from typing import List, Tuple, Dict, Union
 
 from PIL import Image, ImageDraw
@@ -86,6 +87,11 @@ def save_image(
     # create the img directory if it does not exist
     if not os.path.exists("img"):
         os.makedirs("img")
+
+    if i == 0:
+        # clear leftover frames from previous runs
+        for f in glob.glob("img/rgbimage_*.png"):
+            os.remove(f)
 
     error_str = f"{error_mag:.2f}" if error_mag else "undefined"
     save_with_error(
