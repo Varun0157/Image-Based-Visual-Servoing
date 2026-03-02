@@ -1,5 +1,5 @@
 """
-responsible for determining robot velocity required based on current image 
+responsible for determining robot velocity required based on current image
 """
 
 import numpy as np
@@ -8,7 +8,7 @@ from typing import List
 
 from servo import get_marker_corners
 
-LAMBDA = 1
+LAMBDA = 0.5
 required_pos = None
 
 
@@ -34,7 +34,7 @@ def jacobian(X: float, Y: float, Z: float = 1.0) -> List[List[float]]:
     y = Y / Z
     return [
         [-1 / Z, 0, x / Z, x * y, -(1 + x**2), y],
-        [0, -1 / Z, Y / Z, (1 + y**2), -x * y, -x],
+        [0, -1 / Z, y / Z, (1 + y**2), -x * y, -x],
     ]
 
 
@@ -53,7 +53,7 @@ def get_velocity(
             jacobian(
                 X=int(points[i][0]),
                 Y=int(points[i][1]),
-                Z=(depth_buffer[int(points[i][0])][int(points[i][1])]),
+                Z=(depth_buffer[int(points[i][1])][int(points[i][0])]),
             )
             for i in range(3)
         ]
